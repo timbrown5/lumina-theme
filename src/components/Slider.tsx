@@ -25,12 +25,16 @@ const Slider: React.FC<SliderProps> = ({
   previewColor,
   previewLabel,
 }) => {
-  const [inputValue, setInputValue] = useState<string>(value.toString());
+  // Handle undefined or null values by providing defaults
+  const safeValue = value ?? min ?? 0;
+  const [inputValue, setInputValue] = useState<string>(safeValue.toString());
   const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!isInputFocused) setInputValue(value.toString());
-  }, [value, isInputFocused]);
+    if (!isInputFocused) {
+      setInputValue(safeValue.toString());
+    }
+  }, [safeValue, isInputFocused]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
@@ -47,7 +51,7 @@ const Slider: React.FC<SliderProps> = ({
     if (!isNaN(newValue) && newValue >= min && newValue <= max) {
       onChange(newValue);
     } else {
-      setInputValue(value.toString());
+      setInputValue(safeValue.toString());
     }
   };
 
@@ -82,7 +86,7 @@ const Slider: React.FC<SliderProps> = ({
           type="range"
           min={min}
           max={max}
-          value={value}
+          value={safeValue}
           onChange={handleRangeChange}
           className="w-full h-4 rounded cursor-pointer outline-none appearance-none"
           style={{

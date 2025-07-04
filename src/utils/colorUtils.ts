@@ -165,16 +165,41 @@ export const generateColors = (params: ThemeParams): Base24Colors => {
   const commentHue = (params.bgHue + (isLight ? 180 : 0)) % 360;
   const base03 = hslToRgb(commentHue, 15, params.commentLight);
 
-  // Foreground colors
-  const fgLight = isLight ? 15 : 85;
-  const base04 = hslToRgb(params.bgHue, 20, Math.max(0, Math.min(100, fgLight + 15)));
-  const base05 = hslToRgb(params.bgHue, 15, fgLight);
-  const base06 = hslToRgb(params.bgHue, 12, Math.max(0, Math.min(100, fgLight - 5)));
-  const base07 = hslToRgb(params.bgHue, 10, Math.max(0, Math.min(100, fgLight - 10)));
+  // Automatically determine foreground lightness based on background
+  const autoForegroundLight = isLight ? 5 : 95;
+  const base05 = hslToRgb(params.bgHue, 15, autoForegroundLight); // Main text
 
-  // Accent color hue positions
-  const accentHueOffsets = [0, 30, 60, 120, 180, 210, 270, 330];
-  const accentHues = accentHueOffsets.map((offset) => {
+  // base04: Secondary text - 15% less contrast than main text
+  const base04Light = isLight
+    ? Math.min(100, autoForegroundLight + 15)
+    : Math.max(0, autoForegroundLight - 15);
+  const base04 = hslToRgb(params.bgHue, 20, base04Light);
+
+  // base06: Light surface/panel background
+  const base06Hue = (params.bgHue + (isLight ? -60 : 60) + 360) % 360;
+  const base06 = isLight
+    ? hslToRgb(base06Hue, params.bgSat, 20) // Dark surface for light themes
+    : hslToRgb(base06Hue, params.bgSat, 80); // Light surface for dark themes
+
+  // base07: Compatible light accent - use a warmer/cooler variation
+  const base07Hue = (params.bgHue + (isLight ? 60 : -60) + 360) % 360;
+  const base07 = isLight
+    ? hslToRgb(base07Hue, params.bgSat, 20) // Very dark for light themes
+    : hslToRgb(base07Hue, params.bgSat, 80); // Very light for dark themes
+
+  // Accent colors using the customizable offsets
+  const accentOffsets = [
+    params.redOffset,
+    params.orangeOffset,
+    params.yellowOffset,
+    params.greenOffset,
+    params.cyanOffset,
+    params.blueOffset,
+    params.purpleOffset,
+    params.pinkOffset,
+  ];
+
+  const accentHues = accentOffsets.map((offset) => {
     let hue = params.accentHue + offset;
     while (hue < 0) hue += 360;
     while (hue >= 360) hue -= 360;
@@ -182,11 +207,11 @@ export const generateColors = (params: ThemeParams): Base24Colors => {
   });
 
   const accents = accentHues.map((hue) => {
-    return adjustedHslToRgb(hue, params.accentSat, params.foregroundLight);
+    return adjustedHslToRgb(hue, params.accentSat, params.accentLight);
   });
 
   const mutedSat = Math.max(25, params.accentSat * 0.7);
-  const mutedLight = getMutedLightness(params.foregroundLight);
+  const mutedLight = getMutedLightness(params.accentLight);
   const muted = accentHues.map((hue) => {
     return adjustedHslToRgb(hue, mutedSat, mutedLight);
   });
@@ -200,21 +225,21 @@ export const generateColors = (params: ThemeParams): Base24Colors => {
     base05,
     base06,
     base07,
-    base08: accents[0],
-    base09: accents[1],
-    base0A: accents[2],
-    base0B: accents[3],
-    base0C: accents[4],
-    base0D: accents[5],
-    base0E: accents[6],
-    base0F: accents[7],
-    base10: muted[0],
-    base11: muted[1],
-    base12: muted[2],
-    base13: muted[3],
-    base14: muted[4],
-    base15: muted[5],
-    base16: muted[6],
-    base17: muted[7],
+    base08: accents[0], // Red
+    base09: accents[1], // Orange
+    base0A: accents[2], // Yellow
+    base0B: accents[3], // Green
+    base0C: accents[4], // Cyan
+    base0D: accents[5], // Blue
+    base0E: accents[6], // Purple
+    base0F: accents[7], // Pink
+    base10: muted[0], // Muted Red
+    base11: muted[1], // Muted Orange
+    base12: muted[2], // Muted Yellow
+    base13: muted[3], // Muted Green
+    base14: muted[4], // Muted Cyan
+    base15: muted[5], // Muted Blue
+    base16: muted[6], // Muted Purple
+    base17: muted[7], // Muted Pink
   };
 };

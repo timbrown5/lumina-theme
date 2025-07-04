@@ -34,6 +34,32 @@ const loadSettings = (): StoredSettings => {
   }
 };
 
+// Helper function to ensure all required properties exist
+const ensureCompleteParams = (
+  params: Partial<ThemeParams>,
+  theme: ThemeKey,
+  flavor: FlavorKey
+): ThemeParams => {
+  const defaultParams = getThemeParams(theme, flavor);
+  return {
+    bgHue: params.bgHue ?? defaultParams.bgHue,
+    bgSat: params.bgSat ?? defaultParams.bgSat,
+    bgLight: params.bgLight ?? defaultParams.bgLight,
+    redOffset: params.redOffset ?? defaultParams.redOffset,
+    orangeOffset: params.orangeOffset ?? defaultParams.orangeOffset,
+    yellowOffset: params.yellowOffset ?? defaultParams.yellowOffset,
+    greenOffset: params.greenOffset ?? defaultParams.greenOffset,
+    cyanOffset: params.cyanOffset ?? defaultParams.cyanOffset,
+    blueOffset: params.blueOffset ?? defaultParams.blueOffset,
+    purpleOffset: params.purpleOffset ?? defaultParams.purpleOffset,
+    pinkOffset: params.pinkOffset ?? defaultParams.pinkOffset,
+    accentHue: params.accentHue ?? defaultParams.accentHue,
+    accentSat: params.accentSat ?? defaultParams.accentSat,
+    accentLight: params.accentLight ?? defaultParams.accentLight,
+    commentLight: params.commentLight ?? defaultParams.commentLight,
+  };
+};
+
 const getSettingsKey = (theme: ThemeKey, flavor: FlavorKey) => `${theme}-${flavor}`;
 
 export const useThemeLogic = (): ThemeLogic => {
@@ -53,7 +79,9 @@ export const useThemeLogic = (): ThemeLogic => {
     const stored = storedSettings[settingsKey];
 
     if (stored) {
-      setParams(stored);
+      // Ensure the stored params have all required properties
+      const completeParams = ensureCompleteParams(stored, activeTheme, flavor);
+      setParams(completeParams);
     } else {
       const newParams = getThemeParams(activeTheme, flavor);
       setParams(newParams);

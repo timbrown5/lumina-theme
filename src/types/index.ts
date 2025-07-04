@@ -14,16 +14,16 @@ export interface ThemeParams {
   accentHue: number;
   accentSat: number;
   accentLight: number;
-  foregroundLight: number;
   commentLight: number;
 }
+
 interface FlavorData {
   accentHue: number;
   accentSat: number;
   accentLight: number;
-  foregroundLight: number;
   commentLight: number;
 }
+
 export interface Base24Colors {
   base00: string;
   base01: string;

@@ -226,6 +226,32 @@ const CustomizePanel: React.FC<CustomizePanelProps> = ({
 
           <div className="mb-5">
             <h4 style={{ color: pageColors.base05 }} className="mb-3 text-sm font-medium">
+              Accent Color Offsets
+            </h4>
+            <div style={{ color: pageColors.base04 }} className="text-xs mb-3">
+              Fine-tune individual accent color positions on the color wheel
+            </div>
+            {SLIDER_CONFIGS.offsets.map((config) => {
+              const sliderProps = getSliderProps(config.key);
+              return (
+                <Slider
+                  key={config.key}
+                  label={config.label}
+                  value={params[config.key]}
+                  min={config.min}
+                  max={config.max}
+                  type={config.type}
+                  gradientColors={sliderProps.gradientColors}
+                  previewColor={sliderProps.previewColor}
+                  previewLabel={sliderProps.previewLabel}
+                  onChange={(v) => updateParam(config.key, v)}
+                />
+              );
+            })}
+          </div>
+
+          <div className="mb-5">
+            <h4 style={{ color: pageColors.base05 }} className="mb-3 text-sm font-medium">
               Comments & Subtle Text
             </h4>
             {SLIDER_CONFIGS.comment.map((config) => {

@@ -205,6 +205,12 @@ export const SLIDER_GENERATORS: Record<keyof ThemeParams, SliderGenerator> = {
       label: `${value}°`,
     }),
   },
+  bgSat: {
+    gradient: (params) => generateSaturationGradient(params.bgHue),
+  },
+  bgLight: {
+    gradient: (params) => generateLightnessGradient(params.bgHue, params.bgSat),
+  },
   accentHue: {
     gradient: () => generateAccentHueGradient(0, -180, 180),
     preview: (value) => ({
@@ -212,17 +218,11 @@ export const SLIDER_GENERATORS: Record<keyof ThemeParams, SliderGenerator> = {
       label: `Red + ${value > 0 ? '+' : ''}${value}° = ${(0 + value + 360) % 360}°`,
     }),
   },
-  bgSat: {
-    gradient: (params) => generateSaturationGradient(params.bgHue),
-  },
   accentSat: {
     gradient: (params) => {
       const accentHue = (0 + params.accentHue + 360) % 360;
       return generateSaturationGradient(accentHue);
     },
-  },
-  bgLight: {
-    gradient: (params) => generateLightnessGradient(params.bgHue, params.bgSat),
   },
   accentLight: {
     gradient: (params) => {
@@ -245,10 +245,10 @@ export const COLOR_GROUPS: Record<string, ColorGroup[]> = {
     { key: 'base01', name: 'Alt Background' },
     { key: 'base02', name: 'Selection' },
     { key: 'base03', name: 'Comments' },
-    { key: 'base04', name: 'Dark Foreground' },
-    { key: 'base05', name: 'Foreground' },
-    { key: 'base06', name: 'Light Foreground' },
-    { key: 'base07', name: 'Light Background' },
+    { key: 'base04', name: 'Secondary Text' },
+    { key: 'base05', name: 'Main Text' },
+    { key: 'base06', name: 'Light Surface' },
+    { key: 'base07', name: 'Light Accent' },
   ],
   accent: [
     { key: 'base08', name: 'Red' },

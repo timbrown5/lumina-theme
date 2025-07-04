@@ -113,7 +113,7 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
       </div>
 
       <div className="space-y-3">
-        <div className="text-sm font-medium" style={{ color: colors.base04 }}>
+        <div className="text-sm font-medium" style={{ color: colors.base05 }}>
           Interface Elements (Light Text)
         </div>
 
@@ -175,7 +175,7 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
         </div>
 
         <div className="mt-4">
-          <div className="text-sm font-medium mb-2" style={{ color: colors.base04 }}>
+          <div className="text-sm font-medium mb-2" style={{ color: colors.base05 }}>
             Text on Accent Colors (Dark Text Test)
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -184,7 +184,7 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
                 background: colors.base0B,
                 color: colors.base00,
               }}
-              className="px-3 py-1 rounded text-sm font-medium"
+              className="px-3 py-1 rounded text-sm font-bold"
             >
               ✓ Success
             </button>
@@ -193,7 +193,7 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
                 background: colors.base0A,
                 color: colors.base00,
               }}
-              className="px-3 py-1 rounded text-sm font-medium"
+              className="px-3 py-1 rounded text-sm font-bold"
             >
               ⚠ Warning
             </button>
@@ -202,7 +202,7 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
                 background: colors.base08,
                 color: colors.base00,
               }}
-              className="px-3 py-1 rounded text-sm font-medium"
+              className="px-3 py-1 rounded text-sm font-bold"
             >
               ✗ Failure
             </button>
@@ -211,7 +211,7 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
                 background: colors.base0C,
                 color: colors.base00,
               }}
-              className="px-3 py-1 rounded text-sm font-medium"
+              className="px-3 py-1 rounded text-sm font-bold"
             >
               ℹ Info
             </button>
@@ -220,7 +220,7 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
                 background: colors.base0E,
                 color: colors.base00,
               }}
-              className="px-3 py-1 rounded text-sm font-medium"
+              className="px-3 py-1 rounded text-sm font-bold"
             >
               ◆ Special
             </button>
@@ -229,10 +229,11 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
                 background: colors.base0F,
                 color: colors.base00,
               }}
-              className="px-3 py-1 rounded text-sm font-medium"
+              className="px-3 py-1 rounded text-sm font-bold"
             >
               💖 Pink
             </button>
+            :wq
           </div>
         </div>
 
