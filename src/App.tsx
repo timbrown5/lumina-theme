@@ -496,9 +496,9 @@ const App: React.FC = () => {
           everyday use • <strong>Bold:</strong> High contrast, maximum readability
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8 mb-8">
+        <div className="flex flex-col xl:flex-row gap-8 mb-8">
           <div
-            className={`${isCustomizePanelExpanded ? 'lg:w-1/2' : 'lg:w-3/4 lg:max-w-4xl lg:mx-auto'} transition-all duration-300`}
+            className={`${isCustomizePanelExpanded ? 'xl:w-3/5' : 'xl:w-4/5 xl:max-w-6xl xl:mx-auto'} transition-all duration-300`}
           >
             <PreviewPanel
               colors={themeLogic.colors}
@@ -508,7 +508,7 @@ const App: React.FC = () => {
           </div>
 
           <div
-            className={`${isCustomizePanelExpanded ? 'lg:w-1/2' : 'lg:w-1/4'} transition-all duration-300`}
+            className={`${isCustomizePanelExpanded ? 'xl:w-2/5' : 'xl:w-1/5'} transition-all duration-300`}
           >
             <CustomizePanel
               params={themeLogic.params}
@@ -521,7 +521,6 @@ const App: React.FC = () => {
             />
           </div>
         </div>
-
         <ExportPanel
           exportNvimTheme={themeLogic.exportNvimTheme}
           exportTheme={themeLogic.exportTheme}

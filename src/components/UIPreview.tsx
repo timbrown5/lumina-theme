@@ -114,47 +114,126 @@ const UIPreview: React.FC<UIPreviewProps> = ({ colors }) => {
 
       <div className="space-y-3">
         <div className="text-sm font-medium" style={{ color: colors.base04 }}>
-          Interface Elements
+          Interface Elements (Light Text)
         </div>
 
         <div className="flex gap-2 flex-wrap">
           <button
             style={{
-              background: colors.base0D,
-              color: colors.base00,
+              background: colors.base0B,
+              color: colors.base05,
             }}
-            className="px-3 py-1 rounded text-sm font-medium"
+            className="px-3 py-1 rounded text-sm font-bold"
           >
-            Primary
+            ✓ Success
           </button>
           <button
             style={{
-              background: colors.base02,
+              background: colors.base0A,
               color: colors.base05,
-              border: `1px solid ${colors.base03}`,
             }}
-            className="px-3 py-1 rounded text-sm"
+            className="px-3 py-1 rounded text-sm font-bold"
           >
-            Secondary
+            ⚠ Warning
           </button>
           <button
             style={{
               background: colors.base08,
-              color: colors.base00,
+              color: colors.base05,
             }}
-            className="px-3 py-1 rounded text-sm"
+            className="px-3 py-1 rounded text-sm font-bold"
           >
-            Danger
+            ✗ Failure
           </button>
           <button
             style={{
-              background: colors.base0B,
-              color: colors.base00,
+              background: colors.base0C,
+              color: colors.base05,
             }}
-            className="px-3 py-1 rounded text-sm"
+            className="px-3 py-1 rounded text-sm font-bold"
           >
-            Success
+            ℹ Info
           </button>
+          <button
+            style={{
+              background: colors.base0E,
+              color: colors.base05,
+            }}
+            className="px-3 py-1 rounded text-sm font-bold"
+          >
+            ◆ Special
+          </button>
+          <button
+            style={{
+              background: colors.base0F,
+              color: colors.base05,
+            }}
+            className="px-3 py-1 rounded text-sm font-bold"
+          >
+            💖 Pink
+          </button>
+        </div>
+
+        <div className="mt-4">
+          <div className="text-sm font-medium mb-2" style={{ color: colors.base04 }}>
+            Text on Accent Colors (Dark Text Test)
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              style={{
+                background: colors.base0B,
+                color: colors.base00,
+              }}
+              className="px-3 py-1 rounded text-sm font-medium"
+            >
+              ✓ Success
+            </button>
+            <button
+              style={{
+                background: colors.base0A,
+                color: colors.base00,
+              }}
+              className="px-3 py-1 rounded text-sm font-medium"
+            >
+              ⚠ Warning
+            </button>
+            <button
+              style={{
+                background: colors.base08,
+                color: colors.base00,
+              }}
+              className="px-3 py-1 rounded text-sm font-medium"
+            >
+              ✗ Failure
+            </button>
+            <button
+              style={{
+                background: colors.base0C,
+                color: colors.base00,
+              }}
+              className="px-3 py-1 rounded text-sm font-medium"
+            >
+              ℹ Info
+            </button>
+            <button
+              style={{
+                background: colors.base0E,
+                color: colors.base00,
+              }}
+              className="px-3 py-1 rounded text-sm font-medium"
+            >
+              ◆ Special
+            </button>
+            <button
+              style={{
+                background: colors.base0F,
+                color: colors.base00,
+              }}
+              className="px-3 py-1 rounded text-sm font-medium"
+            >
+              💖 Pink
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2">

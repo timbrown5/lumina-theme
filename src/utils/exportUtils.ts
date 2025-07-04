@@ -164,29 +164,21 @@ ${Object.entries(colors)
         });
       }
 
-      return `// Theme configuration - paste this into your theme constants
-// Updated theme: ${activeTheme} (all flavors included)
-// Current view: ${flavor} flavor
-
-export const RAW_THEME_DATA = ${JSON.stringify(themeData, null, 2)} as const;
-
-// To use these settings:
-// 1. Replace the RAW_THEME_DATA in src/constants/index.ts with the above
-// 2. All your customizations for ${activeTheme} theme will be preserved across all flavors`;
+      return `export const RAW_THEME_DATA = ${JSON.stringify(themeData, null, 2)} as const;`;
     },
   },
 };
 
 const getColorDescription = (key: string): string => {
   const descriptions: Record<string, string> = {
-    base00: 'Background',
-    base01: 'Alt Background',
-    base02: 'Selection',
+    base00: 'Primary Background',
+    base01: 'Secondary Background',
+    base02: 'Selection Background',
     base03: 'Comments',
-    base04: 'Dark Foreground',
-    base05: 'Foreground',
-    base06: 'Light Foreground',
-    base07: 'Light Background',
+    base04: 'Secondary Foreground (Low Contrast)',
+    base05: 'Primary Foreground (Main Text)',
+    base06: 'Emphasized Foreground',
+    base07: 'Strong Emphasis (High Contrast)',
     base08: 'Red',
     base09: 'Orange',
     base0A: 'Yellow',
@@ -206,7 +198,6 @@ const getColorDescription = (key: string): string => {
   };
   return descriptions[key] || key;
 };
-
 export const createNvimTheme = (
   colors: Base24Colors,
   themeName: string,

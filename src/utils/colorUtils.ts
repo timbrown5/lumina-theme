@@ -49,12 +49,10 @@ export const hslToRgb = (h: number, s: number, l: number): string => {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
-// Scientific perceptual adjustment using CIE LAB color space
 const adjustColorPerceptually = (h: number, s: number, l: number): string => {
   const basicColor = hslToRgb(h, s, l);
 
   try {
-    // Convert basic color to LAB using hex string
     const labColor = lab(basicColor);
     if (!labColor || typeof labColor.l !== 'number') {
       return basicColor;
@@ -66,27 +64,22 @@ const adjustColorPerceptually = (h: number, s: number, l: number): string => {
 
     let targetLightness = labColor.l;
 
-    // Only apply adjustments if chroma is significantly high
     if (chroma > 35) {
       if (normalizedHue >= 70 && normalizedHue <= 130) {
-        // Yellow-green: gentle reduction
         if (targetLightness > 65) {
-          targetLightness = targetLightness * 0.96;
+          targetLightness = targetLightness * 0.94;
         }
       } else if (normalizedHue >= 130 && normalizedHue <= 180) {
-        // Pure green: minimal adjustment
-        if (targetLightness > 70) {
-          targetLightness = targetLightness * 0.98;
+        if (targetLightness > 60) {
+          targetLightness = targetLightness * 0.88;
         }
       } else if (normalizedHue >= 180 && normalizedHue <= 220) {
-        // Cyan: slight adjustment
         if (targetLightness > 75) {
-          targetLightness = targetLightness * 0.97;
+          targetLightness = targetLightness * 0.95;
         }
       }
     }
 
-    // Apply lightness adjustment if needed
     if (Math.abs(targetLightness - labColor.l) > 0.1) {
       const adjustedLabColor = { ...labColor, l: targetLightness };
       const result = formatHex(adjustedLabColor);
@@ -102,7 +95,6 @@ const adjustColorPerceptually = (h: number, s: number, l: number): string => {
   }
 };
 
-// Enhanced HSL conversion with CIE LAB adjustments
 export const adjustedHslToRgb = (h: number, s: number, l: number): string => {
   return adjustColorPerceptually(h, s, l);
 };
@@ -142,7 +134,6 @@ export const generateLightnessGradient = (hue: number, saturation: number): stri
   hslToRgb(hue, saturation, 100),
 ];
 
-// Calculate muted color lightness
 const getMutedLightness = (accentLightness: number): number => {
   const minDifference = 8;
   const maxDifference = 18;
@@ -154,7 +145,6 @@ const getMutedLightness = (accentLightness: number): number => {
   return Math.min(maxMutedLightness, accentLightness + difference);
 };
 
-// Generate complete Base24 color palette
 export const generateColors = (params: ThemeParams): Base24Colors => {
   const isLight = params.bgLight > 50;
 
@@ -191,14 +181,12 @@ export const generateColors = (params: ThemeParams): Base24Colors => {
     return hue;
   });
 
-  // Generate accent colors with CIE LAB-based perceptual adjustments
   const accents = accentHues.map((hue) => {
-    return adjustedHslToRgb(hue, params.accentSat, params.accentLight);
+    return adjustedHslToRgb(hue, params.accentSat, params.foregroundLight);
   });
 
-  // Generate muted colors
   const mutedSat = Math.max(25, params.accentSat * 0.7);
-  const mutedLight = getMutedLightness(params.accentLight);
+  const mutedLight = getMutedLightness(params.foregroundLight);
   const muted = accentHues.map((hue) => {
     return adjustedHslToRgb(hue, mutedSat, mutedLight);
   });
@@ -212,14 +200,14 @@ export const generateColors = (params: ThemeParams): Base24Colors => {
     base05,
     base06,
     base07,
-    base08: accents[0], // Red
-    base09: accents[1], // Orange
-    base0A: accents[2], // Yellow (CIE LAB adjusted)
-    base0B: accents[3], // Green (CIE LAB adjusted)
-    base0C: accents[4], // Cyan (CIE LAB adjusted)
-    base0D: accents[5], // Blue
-    base0E: accents[6], // Purple
-    base0F: accents[7], // Pink
+    base08: accents[0],
+    base09: accents[1],
+    base0A: accents[2],
+    base0B: accents[3],
+    base0C: accents[4],
+    base0D: accents[5],
+    base0E: accents[6],
+    base0F: accents[7],
     base10: muted[0],
     base11: muted[1],
     base12: muted[2],
