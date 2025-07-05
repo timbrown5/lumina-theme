@@ -1,193 +1,267 @@
-import { useState, useEffect } from 'react';
-import { getBaseTheme, getThemeParams, RAW_THEME_DATA } from '../constants/index.ts';
-import { generateColors } from '../utils/colorUtils.ts';
-import {
-  createNvimTheme,
-  createBase24Json,
-  createThemeParams,
-  createStylixTheme,
-} from '../utils/exportUtils.ts';
-import type { ThemeKey, FlavorKey, TabKey, ThemeParams, ThemeLogic } from '../types/index.ts';
+import { useState, useEffect, useCallback } from 'react';
+import { ThemeManager } from '../classes/ThemeManager.ts';
+import type { ThemeKey, FlavorKey, TabKey, AccentColorKey, Base24Colors } from '../types/index.ts';
 
-const STORAGE_KEY = 'lumina-theme-settings';
+export interface ThemeLogic {
+  // State
+  activeTheme: ThemeKey;
+  activeFlavor: FlavorKey;
+  activeTab: TabKey;
+  selectedColorKey: AccentColorKey | null;
+  colors: Base24Colors;
+  pageColors: Base24Colors;
+  copied: boolean;
 
-interface StoredSettings {
-  [key: string]: ThemeParams;
+  // Theme operations
+  switchTheme: (themeKey: ThemeKey) => void;
+  switchFlavor: (flavor: FlavorKey) => void;
+  setActiveTab: (tab: TabKey) => void;
+  setSelectedColor: (colorKey: AccentColorKey | null) => void;
+
+  // Parameter updates
+  updateParam: (key: string, value: number) => void;
+
+  // Color adjustments
+  updateColorAdjustment: (colorKey: AccentColorKey, hueOffset: number) => void;
+  resetColorAdjustment: (colorKey: AccentColorKey) => void;
+  resetColorToDefault: (colorKey: AccentColorKey) => void;
+
+  // Reset operations
+  resetToFlavor: () => void;
+  resetToTheme: () => void;
+
+  // Export operations
+  exportNvimTheme: () => void;
+  exportTheme: () => void;
+  exportStylixTheme: () => void;
+  copyThemeParams: () => void;
+
+  // Helper methods
+  getThemeInfo: () => { name: string; tagline: string; inspirations: string };
+  getCurrentParams: () => any;
+  getAllThemeKeys: () => ThemeKey[];
+  getAllFlavorKeys: () => FlavorKey[];
 }
 
-const saveSettings = (settings: StoredSettings) => {
-  try {
-    const serialized = JSON.stringify(settings);
-    sessionStorage.setItem(STORAGE_KEY, serialized);
-  } catch (error) {
-    console.warn('Failed to save theme settings:', error);
-  }
-};
-
-const loadSettings = (): StoredSettings => {
-  try {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
-    console.warn('Failed to load theme settings:', error);
-    return {};
-  }
-};
-
-// Helper function to ensure all required properties exist
-const ensureCompleteParams = (
-  params: Partial<ThemeParams>,
-  theme: ThemeKey,
-  flavor: FlavorKey
-): ThemeParams => {
-  const defaultParams = getThemeParams(theme, flavor);
-  return {
-    bgHue: params.bgHue ?? defaultParams.bgHue,
-    bgSat: params.bgSat ?? defaultParams.bgSat,
-    bgLight: params.bgLight ?? defaultParams.bgLight,
-    redOffset: params.redOffset ?? defaultParams.redOffset,
-    orangeOffset: params.orangeOffset ?? defaultParams.orangeOffset,
-    yellowOffset: params.yellowOffset ?? defaultParams.yellowOffset,
-    greenOffset: params.greenOffset ?? defaultParams.greenOffset,
-    cyanOffset: params.cyanOffset ?? defaultParams.cyanOffset,
-    blueOffset: params.blueOffset ?? defaultParams.blueOffset,
-    purpleOffset: params.purpleOffset ?? defaultParams.purpleOffset,
-    pinkOffset: params.pinkOffset ?? defaultParams.pinkOffset,
-    accentHue: params.accentHue ?? defaultParams.accentHue,
-    accentSat: params.accentSat ?? defaultParams.accentSat,
-    accentLight: params.accentLight ?? defaultParams.accentLight,
-    commentLight: params.commentLight ?? defaultParams.commentLight,
-  };
-};
-
-const getSettingsKey = (theme: ThemeKey, flavor: FlavorKey) => `${theme}-${flavor}`;
-
 export const useThemeLogic = (): ThemeLogic => {
-  const [activeTheme, setActiveTheme] = useState<ThemeKey>('twilight');
-  const [flavor, setFlavor] = useState<FlavorKey>('balanced');
-  const [params, setParams] = useState<ThemeParams>(() => getThemeParams('twilight', 'balanced'));
+  // Initialize theme manager
+  const [themeManager] = useState(() => new ThemeManager());
+  const [, forceUpdate] = useState({});
+  const [activeTab, setActiveTab] = useState<TabKey>('ui-preview');
   const [copied, setCopied] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<TabKey>('colors');
-  const [storedSettings, setStoredSettings] = useState<StoredSettings>({});
 
-  useEffect(() => {
-    setStoredSettings(loadSettings());
+  // Force re-render when theme manager state changes
+  const triggerUpdate = useCallback(() => {
+    forceUpdate({});
   }, []);
 
+  // Handle keyboard events for color adjustment
   useEffect(() => {
-    const settingsKey = getSettingsKey(activeTheme, flavor);
-    const stored = storedSettings[settingsKey];
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const selectedColorKey = themeManager.selectedColorKey;
+      if (selectedColorKey) {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          const currentOffset = themeManager.getColorAdjustment(selectedColorKey);
+          const newOffset = Math.max(-60, currentOffset - 5);
+          themeManager.updateColorAdjustment(selectedColorKey, newOffset);
+          triggerUpdate();
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          const currentOffset = themeManager.getColorAdjustment(selectedColorKey);
+          const newOffset = Math.min(60, currentOffset + 5);
+          themeManager.updateColorAdjustment(selectedColorKey, newOffset);
+          triggerUpdate();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          themeManager.setSelectedColor(null);
+          triggerUpdate();
+        }
+      }
+    };
 
-    if (stored) {
-      // Ensure the stored params have all required properties
-      const completeParams = ensureCompleteParams(stored, activeTheme, flavor);
-      setParams(completeParams);
-    } else {
-      const newParams = getThemeParams(activeTheme, flavor);
-      setParams(newParams);
-    }
-  }, [activeTheme, flavor, storedSettings]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [themeManager, triggerUpdate]);
 
-  const colors = generateColors(params);
-  const pageColors = colors;
+  // Parameter update handler
+  const updateParam = useCallback(
+    (key: string, value: number) => {
+      switch (key) {
+        case 'bgHue':
+          themeManager.updateBackgroundHue(value);
+          break;
+        case 'bgSat':
+          themeManager.updateBackgroundSat(value);
+          break;
+        case 'bgLight':
+          themeManager.updateBackgroundLight(value);
+          break;
+        case 'accentHue':
+          themeManager.updateAccentHue(value);
+          break;
+        case 'accentSat':
+          themeManager.updateAccentSat(value);
+          break;
+        case 'accentLight':
+          themeManager.updateAccentLight(value);
+          break;
+        case 'commentLight':
+          themeManager.updateCommentLight(value);
+          break;
+        default:
+          console.warn(`Unknown parameter: ${key}`);
+      }
+      triggerUpdate();
+    },
+    [themeManager, triggerUpdate]
+  );
 
-  const updateParam = (key: keyof ThemeParams, value: number) => {
-    const newParams = { ...params, [key]: value };
-    setParams(newParams);
+  // Theme operations
+  const switchTheme = useCallback(
+    (themeKey: ThemeKey) => {
+      themeManager.switchTheme(themeKey);
+      triggerUpdate();
+    },
+    [themeManager, triggerUpdate]
+  );
 
-    const settingsKey = getSettingsKey(activeTheme, flavor);
-    const newStoredSettings = { ...storedSettings, [settingsKey]: newParams };
-    setStoredSettings(newStoredSettings);
-    saveSettings(newStoredSettings);
-  };
+  const switchFlavor = useCallback(
+    (flavor: FlavorKey) => {
+      themeManager.switchFlavor(flavor);
+      triggerUpdate();
+    },
+    [themeManager, triggerUpdate]
+  );
 
-  const switchTheme = (themeKey: ThemeKey) => {
-    try {
-      console.log('Switching to theme:', themeKey);
-      setActiveTheme(themeKey);
-    } catch (error) {
-      console.error('Error switching theme:', error);
-    }
-  };
+  const setSelectedColor = useCallback(
+    (colorKey: AccentColorKey | null) => {
+      themeManager.setSelectedColor(colorKey);
+      triggerUpdate();
+    },
+    [themeManager, triggerUpdate]
+  );
 
-  const switchFlavor = (newFlavor: FlavorKey) => {
-    setFlavor(newFlavor);
-  };
+  // Color adjustment operations
+  const updateColorAdjustment = useCallback(
+    (colorKey: AccentColorKey, hueOffset: number) => {
+      themeManager.updateColorAdjustment(colorKey, hueOffset);
+      triggerUpdate();
+    },
+    [themeManager, triggerUpdate]
+  );
 
-  const resetToFlavor = () => {
-    const newParams = getThemeParams(activeTheme, flavor);
-    setParams(newParams);
+  const resetColorAdjustment = useCallback(
+    (colorKey: AccentColorKey) => {
+      themeManager.resetColorAdjustment(colorKey);
+      triggerUpdate();
+    },
+    [themeManager, triggerUpdate]
+  );
 
-    const settingsKey = getSettingsKey(activeTheme, flavor);
-    const newStoredSettings = { ...storedSettings, [settingsKey]: newParams };
-    setStoredSettings(newStoredSettings);
-    saveSettings(newStoredSettings);
-  };
+  const resetColorToDefault = useCallback(
+    (colorKey: AccentColorKey) => {
+      themeManager.resetColorToDefault(colorKey);
+      triggerUpdate();
+    },
+    [themeManager, triggerUpdate]
+  );
 
-  const resetToTheme = () => {
-    console.log('Reset theme called for:', activeTheme);
+  // Reset operations
+  const resetToFlavor = useCallback(() => {
+    themeManager.resetToFlavor();
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
 
-    // Clear ALL stored settings
-    setStoredSettings({});
-    saveSettings({});
-    sessionStorage.removeItem(STORAGE_KEY);
+  const resetToTheme = useCallback(() => {
+    themeManager.resetToTheme();
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
 
-    // Get fresh params directly from constants
-    const freshParams = getThemeParams(activeTheme, 'balanced');
-    console.log('Fresh params from constants:', freshParams);
-
-    setParams(freshParams);
-    setFlavor('balanced');
-
-    console.log('Reset complete');
-  };
-
-  const copyToClipboard = (content: string) => {
+  // Clipboard helper
+  const copyToClipboard = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  };
+  }, []);
 
-  const exportNvimTheme = () =>
-    copyToClipboard(createNvimTheme(colors, getBaseTheme(activeTheme).name, flavor));
-  const exportTheme = () =>
-    copyToClipboard(createBase24Json(colors, getBaseTheme(activeTheme).name));
-  const exportStylixTheme = () =>
-    copyToClipboard(createStylixTheme(colors, getBaseTheme(activeTheme).name, flavor));
-  const copyThemeParams = () => {
-    // Collect all flavor params for the current theme
-    const allFlavorParams: { [key in FlavorKey]: ThemeParams } = {
-      muted:
-        storedSettings[getSettingsKey(activeTheme, 'muted')] ||
-        getThemeParams(activeTheme, 'muted'),
-      balanced:
-        storedSettings[getSettingsKey(activeTheme, 'balanced')] ||
-        getThemeParams(activeTheme, 'balanced'),
-      bold:
-        storedSettings[getSettingsKey(activeTheme, 'bold')] || getThemeParams(activeTheme, 'bold'),
-    };
+  // Export operations
+  const exportNvimTheme = useCallback(() => {
+    copyToClipboard(themeManager.exportNeovim());
+  }, [themeManager, copyToClipboard]);
 
-    copyToClipboard(createThemeParams(activeTheme, flavor, params, colors, allFlavorParams));
-  };
+  const exportTheme = useCallback(() => {
+    copyToClipboard(themeManager.exportBase24());
+  }, [themeManager, copyToClipboard]);
+
+  const exportStylixTheme = useCallback(() => {
+    copyToClipboard(themeManager.exportStylix());
+  }, [themeManager, copyToClipboard]);
+
+  const copyThemeParams = useCallback(() => {
+    copyToClipboard(themeManager.exportRawData());
+  }, [themeManager, copyToClipboard]);
+
+  // Helper methods
+  const getThemeInfo = useCallback(() => {
+    return themeManager.getThemeInfo();
+  }, [themeManager]);
+
+  const getCurrentParams = useCallback(() => {
+    return themeManager.getCurrentParams();
+  }, [themeManager]);
+
+  const getAllThemeKeys = useCallback(() => {
+    return themeManager.getAllThemeKeys();
+  }, [themeManager]);
+
+  const getAllFlavorKeys = useCallback(() => {
+    return themeManager.getAllFlavorKeys();
+  }, [themeManager]);
+
+  // Get current state from theme manager
+  const colors = themeManager.getCurrentColors();
+  const pageColors = colors; // Same as colors for now
 
   return {
-    activeTheme,
-    params,
-    copied,
+    // State
+    activeTheme: themeManager.activeTheme,
+    activeFlavor: themeManager.activeFlavor,
     activeTab,
-    flavor,
+    selectedColorKey: themeManager.selectedColorKey,
     colors,
     pageColors,
-    updateParam,
+    copied,
+
+    // Theme operations
     switchTheme,
     switchFlavor,
+    setActiveTab,
+    setSelectedColor,
+
+    // Parameter updates
+    updateParam,
+
+    // Color adjustments
+    updateColorAdjustment,
+    resetColorAdjustment,
+    resetColorToDefault,
+
+    // Reset operations
     resetToFlavor,
     resetToTheme,
-    setActiveTab,
+
+    // Export operations
     exportNvimTheme,
     exportTheme,
     exportStylixTheme,
     copyThemeParams,
+
+    // Helper methods
+    getThemeInfo,
+    getCurrentParams,
+    getAllThemeKeys,
+    getAllFlavorKeys,
   };
 };

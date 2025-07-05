@@ -7,6 +7,10 @@ export interface BaseTheme {
   bgLight: number;
 }
 
+export interface ColorAdjustment {
+  hueOffset: number;
+}
+
 export interface ThemeParams {
   bgHue: number;
   bgSat: number;
@@ -15,6 +19,26 @@ export interface ThemeParams {
   accentSat: number;
   accentLight: number;
   commentLight: number;
+  // Optional individual color offsets (will use standard if not provided)
+  redOffset?: number;
+  orangeOffset?: number;
+  yellowOffset?: number;
+  greenOffset?: number;
+  cyanOffset?: number;
+  blueOffset?: number;
+  purpleOffset?: number;
+  pinkOffset?: number;
+  // Individual color adjustments
+  colorAdjustments?: {
+    base08?: ColorAdjustment; // Red
+    base09?: ColorAdjustment; // Orange
+    base0A?: ColorAdjustment; // Yellow
+    base0B?: ColorAdjustment; // Green
+    base0C?: ColorAdjustment; // Cyan
+    base0D?: ColorAdjustment; // Blue
+    base0E?: ColorAdjustment; // Purple
+    base0F?: ColorAdjustment; // Pink
+  };
 }
 
 interface FlavorData {
@@ -55,6 +79,15 @@ export type ThemeKey = 'midnight' | 'twilight' | 'dawn' | 'noon';
 export type FlavorKey = 'muted' | 'balanced' | 'bold';
 export type TabKey = 'colors' | 'ui-preview' | 'javascript' | 'python' | 'cpp' | 'terminal';
 export type SliderType = 'hue' | 'saturation' | 'lightness';
+export type AccentColorKey =
+  | 'base08'
+  | 'base09'
+  | 'base0A'
+  | 'base0B'
+  | 'base0C'
+  | 'base0D'
+  | 'base0E'
+  | 'base0F';
 
 export interface ColorGroup {
   key: string;
@@ -82,7 +115,12 @@ export interface ThemeLogic {
   flavor: FlavorKey;
   colors: Base24Colors;
   pageColors: Base24Colors;
+  selectedColorKey: AccentColorKey | null;
   updateParam: (key: keyof ThemeParams, value: number) => void;
+  updateColorAdjustment: (colorKey: AccentColorKey, hueOffset: number) => void;
+  resetColorAdjustment: (colorKey: AccentColorKey) => void;
+  resetColorToDefault: (colorKey: AccentColorKey) => void;
+  setSelectedColor: (colorKey: AccentColorKey | null) => void;
   switchTheme: (themeKey: ThemeKey) => void;
   switchFlavor: (flavor: FlavorKey) => void;
   resetToFlavor: () => void;

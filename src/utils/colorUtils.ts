@@ -1,4 +1,4 @@
-import type { ThemeParams, Base24Colors } from '../types/index.ts';
+import type { ThemeParams, Base24Colors, AccentColorKey } from '../types/index.ts';
 import { lab, formatHex } from 'culori';
 
 // Convert HSL values to hex color string
@@ -145,6 +145,47 @@ const getMutedLightness = (accentLightness: number): number => {
   return Math.min(maxMutedLightness, accentLightness + difference);
 };
 
+// Helper function to get the calculated hue for a specific accent color
+export const getCalculatedAccentHue = (params: ThemeParams, colorIndex: number): number => {
+  const standardOffsets = [0, 30, 60, 150, 180, 210, 270, 330];
+  const accentOffsets = [
+    params.redOffset ?? standardOffsets[0],
+    params.orangeOffset ?? standardOffsets[1],
+    params.yellowOffset ?? standardOffsets[2],
+    params.greenOffset ?? standardOffsets[3],
+    params.cyanOffset ?? standardOffsets[4],
+    params.blueOffset ?? standardOffsets[5],
+    params.purpleOffset ?? standardOffsets[6],
+    params.pinkOffset ?? standardOffsets[7],
+  ];
+
+  let hue = params.accentHue + accentOffsets[colorIndex];
+  while (hue < 0) hue += 360;
+  while (hue >= 360) hue -= 360;
+  return hue;
+};
+
+// Helper function to get the final hue including user adjustments
+export const getFinalAccentHue = (params: ThemeParams, colorKey: AccentColorKey): number => {
+  const colorIndex = [
+    'base08',
+    'base09',
+    'base0A',
+    'base0B',
+    'base0C',
+    'base0D',
+    'base0E',
+    'base0F',
+  ].indexOf(colorKey);
+  const calculatedHue = getCalculatedAccentHue(params, colorIndex);
+  const adjustment = params.colorAdjustments?.[colorKey]?.hueOffset ?? 0;
+
+  let finalHue = calculatedHue + adjustment;
+  while (finalHue < 0) finalHue += 360;
+  while (finalHue >= 360) finalHue -= 360;
+  return finalHue;
+};
+
 export const generateColors = (params: ThemeParams): Base24Colors => {
   const isLight = params.bgLight > 50;
 
@@ -187,33 +228,29 @@ export const generateColors = (params: ThemeParams): Base24Colors => {
     ? hslToRgb(base07Hue, params.bgSat, 20) // Very dark for light themes
     : hslToRgb(base07Hue, params.bgSat, 80); // Very light for dark themes
 
-  // Accent colors using the customizable offsets
-  const accentOffsets = [
-    params.redOffset,
-    params.orangeOffset,
-    params.yellowOffset,
-    params.greenOffset,
-    params.cyanOffset,
-    params.blueOffset,
-    params.purpleOffset,
-    params.pinkOffset,
+  // Generate accent colors with individual adjustments
+  const accentColorKeys: AccentColorKey[] = [
+    'base08',
+    'base09',
+    'base0A',
+    'base0B',
+    'base0C',
+    'base0D',
+    'base0E',
+    'base0F',
   ];
 
-  const accentHues = accentOffsets.map((offset) => {
-    let hue = params.accentHue + offset;
-    while (hue < 0) hue += 360;
-    while (hue >= 360) hue -= 360;
-    return hue;
+  const accents = accentColorKeys.map((colorKey) => {
+    const finalHue = getFinalAccentHue(params, colorKey);
+    return adjustedHslToRgb(finalHue, params.accentSat, params.accentLight);
   });
 
-  const accents = accentHues.map((hue) => {
-    return adjustedHslToRgb(hue, params.accentSat, params.accentLight);
-  });
-
+  // Generate muted colors using the same final hues
   const mutedSat = Math.max(25, params.accentSat * 0.7);
   const mutedLight = getMutedLightness(params.accentLight);
-  const muted = accentHues.map((hue) => {
-    return adjustedHslToRgb(hue, mutedSat, mutedLight);
+  const muted = accentColorKeys.map((colorKey) => {
+    const finalHue = getFinalAccentHue(params, colorKey);
+    return adjustedHslToRgb(finalHue, mutedSat, mutedLight);
   });
 
   return {

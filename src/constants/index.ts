@@ -1,11 +1,4 @@
-import type {
-  ColorGroup,
-  Tab,
-  SliderConfig,
-  ThemeKey,
-  FlavorKey,
-  ThemeParams,
-} from '../types/index.ts';
+import type { ColorGroup, Tab, SliderConfig, ThemeKey, FlavorKey } from '../types/index.ts';
 import {
   generateHueGradient,
   generateAccentHueGradient,
@@ -14,6 +7,7 @@ import {
   hslToRgb,
 } from '../utils/colorUtils.ts';
 
+// Raw theme data - now only used for initial Theme class creation
 export const RAW_THEME_DATA = {
   midnight: {
     name: 'Lumina Midnight',
@@ -129,23 +123,12 @@ export const RAW_THEME_DATA = {
   },
 } as const;
 
-interface BaseTheme {
-  name: string;
-  tagline: string;
-  inspirations: string;
-  bgHue: number;
-  bgSat: number;
-  bgLight: number;
-}
+// Helper functions - these become simple accessors since ThemeManager handles everything
+export const getAllThemeKeys = (): ThemeKey[] => ['midnight', 'twilight', 'dawn', 'noon'];
+export const getAllFlavorKeys = (): FlavorKey[] => ['muted', 'balanced', 'bold'];
 
-interface FlavorData {
-  accentHue: number;
-  accentSat: number;
-  accentLight: number;
-  commentLight: number;
-}
-
-export const getBaseTheme = (key: ThemeKey): BaseTheme => {
+// Legacy compatibility - these are now mainly used by the UI components
+export const getBaseTheme = (key: ThemeKey) => {
   const data = RAW_THEME_DATA[key];
   return {
     name: data.name,
@@ -157,47 +140,13 @@ export const getBaseTheme = (key: ThemeKey): BaseTheme => {
   };
 };
 
-export const getFlavorData = (theme: ThemeKey, flavor: FlavorKey): FlavorData => {
-  return RAW_THEME_DATA[theme].flavors[flavor];
-};
-
-export const getThemeParams = (theme: ThemeKey, flavor: FlavorKey) => {
-  try {
-    const baseTheme = getBaseTheme(theme);
-    const flavorData = getFlavorData(theme, flavor);
-
-    return {
-      bgHue: baseTheme.bgHue,
-      bgSat: baseTheme.bgSat,
-      bgLight: baseTheme.bgLight,
-      accentHue: flavorData.accentHue,
-      accentSat: flavorData.accentSat,
-      accentLight: flavorData.accentLight,
-      commentLight: flavorData.commentLight,
-    };
-  } catch (error) {
-    console.error('Error getting theme params:', error, { theme, flavor });
-    return {
-      bgHue: 200,
-      bgSat: 20,
-      bgLight: 20,
-      accentHue: 0,
-      accentSat: 70,
-      accentLight: 60,
-      commentLight: 40,
-    };
-  }
-};
-
-export const getAllThemeKeys = (): ThemeKey[] => Object.keys(RAW_THEME_DATA) as ThemeKey[];
-export const getAllFlavorKeys = (): FlavorKey[] => ['muted', 'balanced', 'bold'];
-
+// Slider generators - simplified to work with any parameters object
 interface SliderGenerator {
-  gradient: (params: ThemeParams) => string[];
-  preview?: (value: number, params: ThemeParams) => { color?: string; label?: string };
+  gradient: (params: any) => string[];
+  preview?: (value: number, params: any) => { color?: string; label?: string };
 }
 
-export const SLIDER_GENERATORS: Record<keyof ThemeParams, SliderGenerator> = {
+export const SLIDER_GENERATORS: Record<string, SliderGenerator> = {
   bgHue: {
     gradient: () => generateHueGradient(),
     preview: (value) => ({
@@ -206,10 +155,10 @@ export const SLIDER_GENERATORS: Record<keyof ThemeParams, SliderGenerator> = {
     }),
   },
   bgSat: {
-    gradient: (params) => generateSaturationGradient(params.bgHue),
+    gradient: (params) => generateSaturationGradient(params.bgHue || 0),
   },
   bgLight: {
-    gradient: (params) => generateLightnessGradient(params.bgHue, params.bgSat),
+    gradient: (params) => generateLightnessGradient(params.bgHue || 0, params.bgSat || 50),
   },
   accentHue: {
     gradient: () => generateAccentHueGradient(0, -180, 180),
@@ -220,20 +169,20 @@ export const SLIDER_GENERATORS: Record<keyof ThemeParams, SliderGenerator> = {
   },
   accentSat: {
     gradient: (params) => {
-      const accentHue = (0 + params.accentHue + 360) % 360;
+      const accentHue = (0 + (params.accentHue || 0) + 360) % 360;
       return generateSaturationGradient(accentHue);
     },
   },
   accentLight: {
     gradient: (params) => {
-      const accentHue = (0 + params.accentHue + 360) % 360;
-      return generateLightnessGradient(accentHue, params.accentSat);
+      const accentHue = (0 + (params.accentHue || 0) + 360) % 360;
+      return generateLightnessGradient(accentHue, params.accentSat || 70);
     },
   },
   commentLight: {
     gradient: (params) => {
-      const isLight = params.bgLight > 50;
-      const commentHue = (params.bgHue + (isLight ? 180 : 0) + 360) % 360;
+      const isLight = (params.bgLight || 50) > 50;
+      const commentHue = ((params.bgHue || 0) + (isLight ? 180 : 0) + 360) % 360;
       return generateLightnessGradient(commentHue, 15);
     },
   },
