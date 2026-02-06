@@ -14,8 +14,8 @@
  * - Export utilities for Base24 JSON format
  */
 
-import type { Base24Colors, AccentColorKey } from '../types/index.js';
-import { getStandardOffset } from '../utils/colorUtils.js';
+import type { Base24Colors, AccentColorKey } from '../types/index.ts';
+import { getStandardOffset } from '../utils/colorUtils.ts';
 
 export interface ColorGroup {
   key: string;
@@ -143,5 +143,29 @@ export class Base24 {
       accent: Base24.ACCENT_COLORS,
       muted: Base24.MUTED_COLORS,
     };
+  }
+
+  /**
+   * Gets organized color sections for UI display.
+   * @returns Array of color sections with metadata
+   */
+  static getColorSections(): ColorSection[] {
+    return [
+      {
+        title: 'Background & UI',
+        colors: this.BASE_COLORS,
+        editable: false,
+      },
+      {
+        title: 'Accent Colors',
+        colors: this.ACCENT_COLORS,
+        editable: true,
+      },
+      {
+        title: 'Muted Accents',
+        colors: this.MUTED_COLORS,
+        editable: false,
+      },
+    ];
   }
 }

@@ -16,40 +16,121 @@
 
 import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import type { Base24Colors, TabKey } from '../types/index.js';
+import type { Base24Colors, TabKey } from '../types/index.ts';
 
 /**
- * Creates a custom syntax highlighting theme based on Base24 colors.
+ * Creates a complete custom syntax highlighting theme based on Base24 colors.
+ * Built entirely from scratch with no external dependencies.
  *
  * @param colors - Base24 color scheme to apply
- * @returns Syntax highlighter theme object with Base24 color mappings
+ * @returns Complete syntax highlighter theme object with Base24 color mappings
  */
 const createBase24Theme = (colors: Base24Colors) => ({
-  ...oneDark,
   'code[class*="language-"]': {
-    ...oneDark['code[class*="language-"]'],
     color: colors.base05,
-    background: colors.base00,
-    fontFamily: '"JetBrains Mono", Consolas, Monaco, "Andale Mono", monospace',
+    background: 'transparent',
+    textShadow: 'none',
+    fontFamily: '"Maple Mono NF", "JetBrains Mono", Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
+    fontSize: '1em',
+    lineHeight: '1.5',
+    whiteSpace: 'pre' as const,
+    wordSpacing: 'normal',
+    wordBreak: 'normal' as const,
+    wordWrap: 'normal' as const,
+    tabSize: '4',
+    hyphens: 'none' as const,
   },
   'pre[class*="language-"]': {
-    ...oneDark['pre[class*="language-"]'],
+    color: colors.base05,
     background: colors.base00,
+    textShadow: 'none',
+    fontFamily: '"Maple Mono NF", "JetBrains Mono", Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
+    fontSize: '1em',
+    lineHeight: '1.5',
+    whiteSpace: 'pre' as const,
+    wordSpacing: 'normal',
+    wordBreak: 'normal' as const,
+    wordWrap: 'normal' as const,
+    tabSize: '4',
+    hyphens: 'none' as const,
+    padding: '1em',
+    margin: '0.5em 0',
+    overflow: 'auto',
+    borderRadius: '0.5em',
     border: `1px solid ${colors.base02}`,
   },
-  comment: { color: colors.base03, fontStyle: 'italic' },
-  string: { color: colors.base0B },
-  number: { color: colors.base09 },
-  boolean: { color: colors.base09 },
-  keyword: { color: colors.base0E, fontWeight: 'bold' },
-  function: { color: colors.base0D },
+  ':not(pre) > code[class*="language-"]': {
+    background: colors.base01,
+    padding: '0.1em',
+    borderRadius: '0.3em',
+    whiteSpace: 'normal',
+  },
+
+  // Comments and documentation
+  'comment': { color: colors.base03, fontStyle: 'italic' },
+  'prolog': { color: colors.base03, fontStyle: 'italic' },
+  'doctype': { color: colors.base03, fontStyle: 'italic' },
+  'cdata': { color: colors.base03, fontStyle: 'italic' },
+
+  // Punctuation and operators
+  'punctuation': { color: colors.base05 },
+  'operator': { color: colors.base05 },
+  'entity': { color: colors.base05 },
+  'url': { color: colors.base05 },
+
+  // Properties and attributes
+  'property': { color: colors.base08 },
+  'tag': { color: colors.base08 },
+  'constant': { color: colors.base09 },
+  'symbol': { color: colors.base09 },
+  'deleted': { color: colors.base08 },
+
+  // Numbers and booleans
+  'boolean': { color: colors.base09 },
+  'number': { color: colors.base09 },
+
+  // Selectors and classes
+  'selector': { color: colors.base0A },
+  'attr-name': { color: colors.base0A },
+  'string': { color: colors.base0B },
+  'char': { color: colors.base0B },
+  'builtin': { color: colors.base0A },
+  'inserted': { color: colors.base0B },
+
+  // Functions and methods
+  'function': { color: colors.base0D },
   'function-name': { color: colors.base0D },
-  variable: { color: colors.base08 },
-  property: { color: colors.base08 },
   'class-name': { color: colors.base0A },
-  operator: { color: colors.base05 },
-  punctuation: { color: colors.base05 },
+
+  // Keywords and language constructs
+  'keyword': { color: colors.base0E, fontWeight: 'bold' },
+  'atrule': { color: colors.base0E },
+  'attr-value': { color: colors.base0B },
+  'regex': { color: colors.base0C },
+  'important': { color: colors.base08, fontWeight: 'bold' },
+
+  // Variables
+  'variable': { color: colors.base08 },
+
+  // Special characters
+  'namespace': { color: colors.base0F },
+
+  // Specific language tokens
+  'token.comment': { color: colors.base03, fontStyle: 'italic' },
+  'token.string': { color: colors.base0B },
+  'token.number': { color: colors.base09 },
+  'token.boolean': { color: colors.base09 },
+  'token.keyword': { color: colors.base0E, fontWeight: 'bold' },
+  'token.function': { color: colors.base0D },
+  'token.class-name': { color: colors.base0A },
+  'token.operator': { color: colors.base05 },
+  'token.punctuation': { color: colors.base05 },
+
+  // Additional syntax elements
+  'bold': { fontWeight: 'bold' },
+  'italic': { fontStyle: 'italic' },
+  'entity.name.tag': { color: colors.base08 },
+  'entity.other.attribute-name': { color: colors.base0A },
 });
 
 /**
@@ -171,17 +252,19 @@ interface SyntaxPreviewProps {
  */
 const SyntaxPreview: React.FC<SyntaxPreviewProps> = ({ colors, language }) => {
   /**
-   * Maps internal language keys to react-syntax-highlighter language identifiers.
+   * Maps internal language keys to Prism.js language identifiers.
    */
   const languageMap: Record<string, string> = {
     terminal: 'bash',
     cpp: 'cpp',
     javascript: 'javascript',
     python: 'python',
+    'ui-preview': 'javascript',
+    'vscode': 'javascript',
   };
 
   const code = CODE_EXAMPLES[language] || CODE_EXAMPLES.javascript;
-  const syntaxLanguage = languageMap[language] || language;
+  const syntaxLanguage = languageMap[language] || 'javascript';
   const theme = createBase24Theme(colors);
 
   return (
@@ -192,6 +275,10 @@ const SyntaxPreview: React.FC<SyntaxPreviewProps> = ({ colors, language }) => {
         margin: 0,
         fontSize: '1rem',
         lineHeight: '1.6',
+        background: colors.base00,
+        border: `1px solid ${colors.base02}`,
+        borderRadius: '0.5rem',
+        fontFamily: '"Maple Mono NF", "JetBrains Mono", Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
       }}
     >
       {code}

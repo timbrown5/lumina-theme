@@ -4,26 +4,14 @@
  * ## Key Types
  * - ThemeParams: All adjustable theme parameters
  * - ColorAdjustment: Individual color fine-tuning data
- * - ThemeDefinition: Complete theme file structure
+ * - ThemeFileData: On-disk theme file format
  */
-
-/**
- * Available base theme identifiers in the Lumina system.
- */
-export type ThemeKey = 'midnight' | 'twilight' | 'dawn' | 'noon';
-
-/**
- * Available flavor intensity variants for each theme.
- */
-export type FlavorKey = 'muted' | 'balanced' | 'bold';
 
 /**
  * Core theme metadata and background color parameters.
  */
 export interface BaseTheme {
   name: string;
-  tagline: string;
-  inspirations: string;
   bgHue: number;
   bgSat: number;
   bgLight: number;
@@ -48,14 +36,6 @@ export interface ThemeParams {
   accentSat: number;
   accentLight: number;
   commentLight: number;
-  redOffset?: number;
-  orangeOffset?: number;
-  yellowOffset?: number;
-  greenOffset?: number;
-  cyanOffset?: number;
-  blueOffset?: number;
-  purpleOffset?: number;
-  pinkOffset?: number;
   colorAdjustments?: {
     base08?: ColorAdjustment;
     base09?: ColorAdjustment;
@@ -69,16 +49,6 @@ export interface ThemeParams {
 }
 
 /**
- * Flavor-specific color intensity and contrast settings.
- */
-export interface FlavorData {
-  accentHue: number;
-  accentSat: number;
-  accentLight: number;
-  commentLight: number;
-}
-
-/**
  * Theme-specific color offset definition for accent colors.
  */
 export interface AccentOffsetDefinition {
@@ -88,24 +58,40 @@ export interface AccentOffsetDefinition {
 }
 
 /**
- * Complete theme definition file structure for theme installation.
+ * Accent offsets map keyed by color name.
  */
-export interface ThemeDefinition {
-  name: string;
-  tagline: string;
-  inspirations: string;
+export interface AccentOffsets {
+  red: AccentOffsetDefinition;
+  orange: AccentOffsetDefinition;
+  yellow: AccentOffsetDefinition;
+  green: AccentOffsetDefinition;
+  cyan: AccentOffsetDefinition;
+  blue: AccentOffsetDefinition;
+  purple: AccentOffsetDefinition;
+  pink: AccentOffsetDefinition;
+}
+
+/**
+ * The definition block stored inside a theme file.
+ * Contains all parameters needed to regenerate colors.
+ */
+export interface ThemeDefinitionParams {
   bgHue: number;
   bgSat: number;
   bgLight: number;
-  accentOffsets: {
-    red: AccentOffsetDefinition;
-    orange: AccentOffsetDefinition;
-    yellow: AccentOffsetDefinition;
-    green: AccentOffsetDefinition;
-    cyan: AccentOffsetDefinition;
-    blue: AccentOffsetDefinition;
-    purple: AccentOffsetDefinition;
-    pink: AccentOffsetDefinition;
-  };
-  flavors: Record<FlavorKey, FlavorData>;
+  accentHue: number;
+  accentSat: number;
+  accentLight: number;
+  commentLight: number;
+  accentOffsets: AccentOffsets;
+}
+
+/**
+ * On-disk theme file format (themes/<theme>/<theme>-<variant>.json).
+ * Source of truth for the editor. Consumed by the generation script to produce base24/ files.
+ */
+export interface ThemeFileData {
+  name: string;
+  variant: string;
+  definition: ThemeDefinitionParams;
 }
