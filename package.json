@@ -7,7 +7,6 @@
   },
   "description": "Create beautiful Base24 themes for Neovim and terminals",
   "devDependencies": {
-    "@rollup/rollup-darwin-arm64": "^4.52.2",
     "@types/culori": "^4.0.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
