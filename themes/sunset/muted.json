@@ -1,0 +1,39 @@
+{
+  "name": "Lumina Sunset",
+  "variant": "muted",
+  "definition": {
+    "bgHue": 11,
+    "bgSat": 79,
+    "bgLight": 98,
+    "accentHue": 352,
+    "accentSat": 60,
+    "accentLight": 65,
+    "commentLight": 65,
+    "accentOffsets": {
+      "red": {
+        "hue": 0
+      },
+      "orange": {
+        "hue": 5
+      },
+      "yellow": {
+        "hue": -5
+      },
+      "green": {
+        "hue": -5
+      },
+      "cyan": {
+        "hue": -5
+      },
+      "blue": {
+        "hue": 5
+      },
+      "purple": {
+        "hue": 15
+      },
+      "pink": {
+        "hue": 10
+      }
+    }
+  }
+}
