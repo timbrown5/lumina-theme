@@ -7,6 +7,8 @@
  * - ThemeFileData: On-disk theme file format
  */
 
+import type { AccentColorKey, MutedColorKey } from './base24.ts';
+
 /**
  * Core theme metadata and background color parameters.
  */
@@ -23,6 +25,30 @@ export interface BaseTheme {
 export interface ColorAdjustment {
   hueOffset: number;
 }
+
+/**
+ * Override for an individual color's HSL values, used when a color is "locked".
+ */
+export interface ColorOverride {
+  hue: number;
+  saturation: number;
+  lightness: number;
+}
+
+/**
+ * Background color keys that can be individually locked.
+ */
+export type BackgroundColorKey = 'base00' | 'base01' | 'base02';
+
+/**
+ * Foreground & UI color keys that can be individually locked.
+ */
+export type ForegroundColorKey = 'base03' | 'base04' | 'base05' | 'base06' | 'base07';
+
+/**
+ * All color keys that support individual lock/override.
+ */
+export type LockableColorKey = BackgroundColorKey | ForegroundColorKey | AccentColorKey | MutedColorKey;
 
 /**
  * Complete set of adjustable theme parameters.
@@ -46,6 +72,7 @@ export interface ThemeParams {
     base0E?: ColorAdjustment;
     base0F?: ColorAdjustment;
   };
+  colorOverrides?: Partial<Record<LockableColorKey, ColorOverride>>;
 }
 
 /**
@@ -84,6 +111,7 @@ export interface ThemeDefinitionParams {
   accentLight: number;
   commentLight: number;
   accentOffsets: AccentOffsets;
+  colorOverrides?: Partial<Record<LockableColorKey, ColorOverride>>;
 }
 
 /**

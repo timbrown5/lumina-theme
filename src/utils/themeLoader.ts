@@ -89,7 +89,7 @@ class ThemeLoader {
       return { bgHue: 270, bgSat: 25, bgLight: 6, accentHue: 0, accentSat: 85, accentLight: 75, commentLight: 55 };
     }
     const d = data.definition;
-    return {
+    const params: ThemeParams = {
       bgHue: d.bgHue,
       bgSat: d.bgSat,
       bgLight: d.bgLight,
@@ -99,6 +99,10 @@ class ThemeLoader {
       commentLight: d.commentLight,
       colorAdjustments: {},
     };
+    if (d.colorOverrides && Object.keys(d.colorOverrides).length > 0) {
+      params.colorOverrides = d.colorOverrides;
+    }
+    return params;
   }
 
   getAccentOffsets(themeKey: string, variantKey: string): AccentOffsets | null {

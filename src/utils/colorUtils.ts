@@ -3,7 +3,7 @@
  * Converts theme parameters into complete Base24 color schemes using OKHSL color space.
  */
 
-import type { ThemeParams, Base24Colors, AccentColorKey, AccentOffsets } from '../types/index.js';
+import type { ThemeParams, Base24Colors, AccentColorKey, AccentOffsets, LockableColorKey, ColorOverride, BackgroundColorKey, ForegroundColorKey, MutedColorKey } from '../types/index.js';
 import { lab, formatHex } from 'culori';
 
 /**
@@ -80,6 +80,89 @@ export function getFinalHue(
  */
 export function getUserAdjustment(params: ThemeParams, colorKey: AccentColorKey): number {
   return params.colorAdjustments?.[colorKey]?.hueOffset ?? 0;
+}
+
+const BACKGROUND_KEYS: BackgroundColorKey[] = ['base00', 'base01', 'base02'];
+const FOREGROUND_KEYS: ForegroundColorKey[] = ['base03', 'base04', 'base05', 'base06', 'base07'];
+const MUTED_KEYS: MutedColorKey[] = ['base10', 'base11', 'base12', 'base13', 'base14', 'base15', 'base16', 'base17'];
+const MUTED_TO_ACCENT: Record<MutedColorKey, AccentColorKey> = {
+  base10: 'base08', base11: 'base09', base12: 'base0A', base13: 'base0B',
+  base14: 'base0C', base15: 'base0D', base16: 'base0E', base17: 'base0F',
+};
+
+/**
+ * Returns effective H/S/L for any lockable color.
+ * If the color has an override, returns the override values.
+ * Otherwise, computes the parametric values.
+ */
+export function getEffectiveHSL(
+  params: ThemeParams,
+  colorKey: LockableColorKey,
+  accentOffsets: AccentOffsets | null
+): { hue: number; saturation: number; lightness: number } {
+  const override = params.colorOverrides?.[colorKey];
+  if (override) {
+    return { ...override };
+  }
+
+  const isLight = params.bgLight > 50;
+
+  if (BACKGROUND_KEYS.includes(colorKey as BackgroundColorKey)) {
+    switch (colorKey) {
+      case 'base00':
+        return { hue: params.bgHue, saturation: params.bgSat, lightness: params.bgLight };
+      case 'base01':
+        return {
+          hue: params.bgHue,
+          saturation: Math.min(100, params.bgSat * 1.2),
+          lightness: Math.max(0, Math.min(100, params.bgLight + (isLight ? -4 : 4))),
+        };
+      case 'base02':
+        return {
+          hue: params.bgHue,
+          saturation: Math.min(100, params.bgSat * 1.5),
+          lightness: Math.max(0, Math.min(100, params.bgLight + (isLight ? -8 : 8))),
+        };
+    }
+  }
+
+  if (FOREGROUND_KEYS.includes(colorKey as ForegroundColorKey)) {
+    const autoForegroundLight = isLight ? 5 : 95;
+    switch (colorKey) {
+      case 'base03': {
+        const commentHue = (params.bgHue + (isLight ? 180 : 0)) % 360;
+        return { hue: commentHue, saturation: 15, lightness: params.commentLight };
+      }
+      case 'base04': {
+        const base04Light = isLight
+          ? Math.min(100, autoForegroundLight + 15)
+          : Math.max(0, autoForegroundLight - 15);
+        return { hue: params.bgHue, saturation: 20, lightness: base04Light };
+      }
+      case 'base05':
+        return { hue: params.bgHue, saturation: 15, lightness: autoForegroundLight };
+      case 'base06': {
+        const base06Hue = (params.bgHue + (isLight ? -60 : 60) + 360) % 360;
+        return { hue: base06Hue, saturation: params.bgSat, lightness: isLight ? 20 : 80 };
+      }
+      case 'base07': {
+        const base07Hue = (params.bgHue + (isLight ? 60 : -60) + 360) % 360;
+        return { hue: base07Hue, saturation: params.bgSat, lightness: isLight ? 20 : 80 };
+      }
+    }
+  }
+
+  if (MUTED_KEYS.includes(colorKey as MutedColorKey)) {
+    const parentAccent = MUTED_TO_ACCENT[colorKey as MutedColorKey];
+    const parentHSL = getEffectiveHSL(params, parentAccent, accentOffsets);
+    const mutedSat = Math.max(25, parentHSL.saturation * 0.7);
+    const mutedLight = getMutedLightness(parentHSL.lightness);
+    return { hue: parentHSL.hue, saturation: mutedSat, lightness: mutedLight };
+  }
+
+  // Accent color
+  const finalHue = getFinalHue(params, colorKey as AccentColorKey, accentOffsets);
+  return { hue: finalHue, saturation: params.accentSat, lightness: params.accentLight };
 }
 
 /**
@@ -195,49 +278,6 @@ export const createGradientBg = (colors: string[]): string =>
   `linear-gradient(90deg, ${colors.join(', ')})`;
 
 /**
- * Generates hue gradient for visual sliders.
- */
-export const generateHueGradient = (steps: number = 25): string[] => {
-  return Array.from({ length: steps }, (_, i) => {
-    const hue = (360 * i) / (steps - 1);
-    return hslToRgb(hue, 80, 60);
-  });
-};
-
-/**
- * Generates accent hue gradient showing adjustment range.
- */
-export const generateAccentHueGradient = (
-  baseHue: number,
-  minAdjustment: number,
-  maxAdjustment: number,
-  steps: number = 25
-): string[] => {
-  return Array.from({ length: steps }, (_, i) => {
-    const adjustment = minAdjustment + ((maxAdjustment - minAdjustment) * i) / (steps - 1);
-    const finalHue = (baseHue + adjustment + 360) % 360;
-    return hslToRgb(finalHue, 80, 60);
-  });
-};
-
-/**
- * Generates saturation gradient from gray to full color.
- */
-export const generateSaturationGradient = (hue: number): string[] => [
-  hslToRgb(hue, 0, 50),
-  hslToRgb(hue, 100, 50),
-];
-
-/**
- * Generates lightness gradient from black to white.
- */
-export const generateLightnessGradient = (hue: number, saturation: number): string[] => [
-  hslToRgb(hue, saturation, 0),
-  hslToRgb(hue, saturation, 50),
-  hslToRgb(hue, saturation, 100),
-];
-
-/**
  * Calculates appropriate lightness for muted accent colors.
  */
 const getMutedLightness = (accentLightness: number): number => {
@@ -259,57 +299,101 @@ const getMutedLightness = (accentLightness: number): number => {
  */
 export const generateColors = (params: ThemeParams, accentOffsets: AccentOffsets | null): Base24Colors => {
   const isLight = params.bgLight > 50;
+  const overrides = params.colorOverrides;
 
-  // Base colors (00-07)
-  const base00 = hslToRgb(params.bgHue, params.bgSat, params.bgLight);
-  const base01 = hslToRgb(
-    params.bgHue,
-    Math.min(100, params.bgSat * 1.2),
-    Math.max(0, Math.min(100, params.bgLight + (isLight ? -4 : 4)))
-  );
-  const base02 = hslToRgb(
-    params.bgHue,
-    Math.min(100, params.bgSat * 1.5),
-    Math.max(0, Math.min(100, params.bgLight + (isLight ? -8 : 8)))
-  );
+  // Base colors (00-07) — check overrides for base00-02
+  const bg00 = overrides?.base00;
+  const base00 = bg00
+    ? hslToRgb(bg00.hue, bg00.saturation, bg00.lightness)
+    : hslToRgb(params.bgHue, params.bgSat, params.bgLight);
 
+  const bg01 = overrides?.base01;
+  const base01 = bg01
+    ? hslToRgb(bg01.hue, bg01.saturation, bg01.lightness)
+    : hslToRgb(
+        params.bgHue,
+        Math.min(100, params.bgSat * 1.2),
+        Math.max(0, Math.min(100, params.bgLight + (isLight ? -4 : 4)))
+      );
+
+  const bg02 = overrides?.base02;
+  const base02 = bg02
+    ? hslToRgb(bg02.hue, bg02.saturation, bg02.lightness)
+    : hslToRgb(
+        params.bgHue,
+        Math.min(100, params.bgSat * 1.5),
+        Math.max(0, Math.min(100, params.bgLight + (isLight ? -8 : 8)))
+      );
+
+  // Foreground & UI colors (03-07) — check overrides
+  const fg03 = overrides?.base03;
   const commentHue = (params.bgHue + (isLight ? 180 : 0)) % 360;
-  const base03 = hslToRgb(commentHue, 15, params.commentLight);
+  const base03 = fg03
+    ? hslToRgb(fg03.hue, fg03.saturation, fg03.lightness)
+    : hslToRgb(commentHue, 15, params.commentLight);
 
   const autoForegroundLight = isLight ? 5 : 95;
-  const base05 = hslToRgb(params.bgHue, 15, autoForegroundLight);
 
+  const fg04 = overrides?.base04;
   const base04Light = isLight
     ? Math.min(100, autoForegroundLight + 15)
     : Math.max(0, autoForegroundLight - 15);
-  const base04 = hslToRgb(params.bgHue, 20, base04Light);
+  const base04 = fg04
+    ? hslToRgb(fg04.hue, fg04.saturation, fg04.lightness)
+    : hslToRgb(params.bgHue, 20, base04Light);
 
+  const fg05 = overrides?.base05;
+  const base05 = fg05
+    ? hslToRgb(fg05.hue, fg05.saturation, fg05.lightness)
+    : hslToRgb(params.bgHue, 15, autoForegroundLight);
+
+  const fg06 = overrides?.base06;
   const base06Hue = (params.bgHue + (isLight ? -60 : 60) + 360) % 360;
-  const base06 = isLight
-    ? hslToRgb(base06Hue, params.bgSat, 20)
-    : hslToRgb(base06Hue, params.bgSat, 80);
+  const base06 = fg06
+    ? hslToRgb(fg06.hue, fg06.saturation, fg06.lightness)
+    : isLight
+      ? hslToRgb(base06Hue, params.bgSat, 20)
+      : hslToRgb(base06Hue, params.bgSat, 80);
 
+  const fg07 = overrides?.base07;
   const base07Hue = (params.bgHue + (isLight ? 60 : -60) + 360) % 360;
-  const base07 = isLight
-    ? hslToRgb(base07Hue, params.bgSat, 20)
-    : hslToRgb(base07Hue, params.bgSat, 80);
+  const base07 = fg07
+    ? hslToRgb(fg07.hue, fg07.saturation, fg07.lightness)
+    : isLight
+      ? hslToRgb(base07Hue, params.bgSat, 20)
+      : hslToRgb(base07Hue, params.bgSat, 80);
 
-  // Accent colors (08-0F)
+  // Accent colors (08-0F) — check overrides per color
   const accentColorKeys: AccentColorKey[] = [
     'base08', 'base09', 'base0A', 'base0B', 'base0C', 'base0D', 'base0E', 'base0F',
   ];
 
   const accents = accentColorKeys.map((colorKey) => {
+    const accentOverride = overrides?.[colorKey];
+    if (accentOverride) {
+      return adjustedHslToRgb(accentOverride.hue, accentOverride.saturation, accentOverride.lightness);
+    }
     const finalHue = getFinalHue(params, colorKey, accentOffsets);
     return adjustedHslToRgb(finalHue, params.accentSat, params.accentLight);
   });
 
-  // Muted colors (10-17)
-  const mutedSat = Math.max(25, params.accentSat * 0.7);
-  const mutedLight = getMutedLightness(params.accentLight);
-  const muted = accentColorKeys.map((colorKey) => {
-    const finalHue = getFinalHue(params, colorKey, accentOffsets);
-    return adjustedHslToRgb(finalHue, mutedSat, mutedLight);
+  // Muted colors (10-17) — check direct override first, else derive from parent accent
+  const mutedColorKeys: MutedColorKey[] = [
+    'base10', 'base11', 'base12', 'base13', 'base14', 'base15', 'base16', 'base17',
+  ];
+  const muted = mutedColorKeys.map((mutedKey, i) => {
+    const mutedOverride = overrides?.[mutedKey];
+    if (mutedOverride) {
+      return adjustedHslToRgb(mutedOverride.hue, mutedOverride.saturation, mutedOverride.lightness);
+    }
+    const accentKey = accentColorKeys[i];
+    const accentOverride = overrides?.[accentKey];
+    const sat = accentOverride ? accentOverride.saturation : params.accentSat;
+    const light = accentOverride ? accentOverride.lightness : params.accentLight;
+    const hue = accentOverride ? accentOverride.hue : getFinalHue(params, accentKey, accentOffsets);
+    const mutedSat = Math.max(25, sat * 0.7);
+    const mutedLight = getMutedLightness(light);
+    return adjustedHslToRgb(hue, mutedSat, mutedLight);
   });
 
   return {

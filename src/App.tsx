@@ -11,6 +11,7 @@ import ColorPaletteEditor from './components/ColorPaletteEditor.tsx';
 import UIPreview from './components/UIPreview.tsx';
 import VSCodePreview from './components/VSCodePreview.tsx';
 import type { TabKey, Base24Colors, ThemeParams } from './types/index.ts';
+import { getStandardOffset } from './utils/colorUtils.ts';
 
 const SyntaxPreview = React.lazy(() => import('./components/SyntaxHighlighter.tsx'));
 
@@ -277,10 +278,49 @@ const CustomizePanel: React.FC<CustomizePanelProps> = ({
   themeLogic,
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(true);
+  const colorPickerRef = React.useRef<HTMLInputElement>(null);
+  const colorPickerGroupRef = React.useRef<'bg' | 'accent' | null>(null);
 
   React.useEffect(() => {
     onExpandChange(isExpanded);
   }, [isExpanded, onExpandChange]);
+
+  const hexToHSL = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return { h: 0, s: 0, l: Math.round(l * 100) };
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h = 0;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+  };
+
+  const openColorPicker = (group: 'bg' | 'accent') => {
+    colorPickerGroupRef.current = group;
+    if (colorPickerRef.current) {
+      colorPickerRef.current.value = group === 'bg' ? pageColors.base00 : pageColors.base07;
+      colorPickerRef.current.click();
+    }
+  };
+
+  const handleColorPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { h, s, l } = hexToHSL(e.target.value);
+    if (colorPickerGroupRef.current === 'bg') {
+      updateParam('bgHue', h);
+      updateParam('bgSat', s);
+      updateParam('bgLight', l);
+    } else if (colorPickerGroupRef.current === 'accent') {
+      updateParam('accentHue', h);
+      updateParam('accentSat', s);
+      updateParam('accentLight', l);
+    }
+  };
 
   const getSliderProps = (key: ValidSliderKey) => {
     const generator = SLIDER_GENERATORS[key];
@@ -304,6 +344,12 @@ const CustomizePanel: React.FC<CustomizePanelProps> = ({
       }}
       className="rounded-xl p-5"
     >
+      <input
+        ref={colorPickerRef}
+        type="color"
+        onChange={handleColorPicked}
+        className="absolute w-0 h-0 opacity-0 pointer-events-none"
+      />
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         style={{ color: pageColors.base05 }}
@@ -334,10 +380,11 @@ const CustomizePanel: React.FC<CustomizePanelProps> = ({
                   max={config.max}
                   type={config.type}
                   gradientColors={sliderProps.gradientColors}
-                  previewColor={sliderProps.previewColor}
+                  previewColor={config.key === 'bgHue' ? pageColors.base00 : sliderProps.previewColor}
                   previewLabel={sliderProps.previewLabel}
                   colors={pageColors}
                   onChange={(v) => updateParam(config.key, v)}
+                  onPreviewClick={config.key === 'bgHue' ? () => openColorPicker('bg') : undefined}
                 />
               );
             })}
@@ -361,10 +408,11 @@ const CustomizePanel: React.FC<CustomizePanelProps> = ({
                   max={config.max}
                   type={config.type}
                   gradientColors={sliderProps.gradientColors}
-                  previewColor={sliderProps.previewColor}
+                  previewColor={config.key === 'accentHue' ? pageColors.base07 : sliderProps.previewColor}
                   previewLabel={sliderProps.previewLabel}
                   colors={pageColors}
                   onChange={(v) => updateParam(config.key, v)}
+                  onPreviewClick={config.key === 'accentHue' ? () => openColorPicker('accent') : undefined}
                 />
               );
             })}
@@ -408,15 +456,30 @@ const CustomizePanel: React.FC<CustomizePanelProps> = ({
               getCurrentOffset={(colorKey) => themeLogic.getCurrentParams().colorAdjustments?.[colorKey]?.hueOffset || 0}
               getCalculatedHue={(colorKey) => {
                 const baseHue = themeLogic.getCurrentParams().accentHue || 0;
+                const standardOffset = getStandardOffset(colorKey);
                 const themeOffset = themeLogic.getThemeOffset(colorKey);
                 const userOffset = themeLogic.getCurrentParams().colorAdjustments?.[colorKey]?.hueOffset || 0;
-                return (baseHue + themeOffset + userOffset + 360) % 360;
+                return (baseHue + standardOffset + themeOffset + userOffset + 360) % 360;
               }}
               getThemeOffset={themeLogic.getThemeOffset}
+              onLockColor={themeLogic.lockColor}
+              onUnlockColor={themeLogic.unlockColor}
+              isColorLocked={themeLogic.isColorLocked}
+              onUpdateColorOverride={themeLogic.updateColorOverride}
+              getColorHSL={themeLogic.getColorHSL}
             />
           </div>
 
-          <div className="flex gap-2 justify-end text-xs">
+          <div className="flex gap-2 justify-end text-xs flex-wrap">
+            <Button
+              onClick={() => themeLogic.copyBgToVariants()}
+              variant="secondary"
+              colors={pageColors}
+              className="px-3 py-2"
+              title="Copy background hue/sat/light and manual BG colors to all other variants"
+            >
+              Copy BG to variants
+            </Button>
             <Button
               onClick={resetVariant}
               variant="secondary"
@@ -539,12 +602,6 @@ const App: React.FC = () => {
   const themeLogic = useThemeLogic();
   const [isCustomizePanelExpanded, setIsCustomizePanelExpanded] = React.useState(true);
 
-  React.useEffect(() => {
-    if (themeLogic.activeTab === 'colors') {
-      themeLogic.setActiveTab('ui-preview');
-    }
-  }, [themeLogic.activeTab]);
-
   return (
     <div
       className="min-h-screen p-5 font-sans"
@@ -572,9 +629,9 @@ const App: React.FC = () => {
           pageColors={themeLogic.pageColors}
         />
 
-        <div className="flex flex-col xl:flex-row gap-8 mb-8">
+        <div className="flex flex-col lg:flex-row gap-8 mb-8">
           <div
-            className={`${isCustomizePanelExpanded ? 'xl:w-3/5' : 'xl:w-4/5 xl:max-w-6xl xl:mx-auto'} transition-all duration-300`}
+            className={`${isCustomizePanelExpanded ? 'lg:w-3/5' : 'lg:w-4/5 lg:max-w-6xl lg:mx-auto'} transition-all duration-300`}
           >
             <PreviewPanel
               colors={themeLogic.colors}
@@ -584,7 +641,7 @@ const App: React.FC = () => {
           </div>
 
           <div
-            className={`${isCustomizePanelExpanded ? 'xl:w-2/5' : 'xl:w-1/5'} transition-all duration-300`}
+            className={`${isCustomizePanelExpanded ? 'lg:w-2/5' : 'lg:w-1/5'} transition-all duration-300`}
           >
             <CustomizePanel
               params={themeLogic.getCurrentParams()}

@@ -97,24 +97,25 @@ export const createThemeDefinitionJson = (
   themeName: string,
   variant: string
 ): string => {
-  const themeDefinition = {
-    name: themeName,
-    variant,
-    definition: {
-      bgHue: params.bgHue,
-      bgSat: params.bgSat,
-      bgLight: params.bgLight,
-      accentHue: params.accentHue,
-      accentSat: params.accentSat,
-      accentLight: params.accentLight,
-      commentLight: params.commentLight,
-      accentOffsets: accentOffsets ?? {
-        red: { hue: 0 }, orange: { hue: 0 }, yellow: { hue: 0 }, green: { hue: 0 },
-        cyan: { hue: 0 }, blue: { hue: 0 }, purple: { hue: 0 }, pink: { hue: 0 },
-      },
+  const definition: Record<string, any> = {
+    bgHue: params.bgHue,
+    bgSat: params.bgSat,
+    bgLight: params.bgLight,
+    accentHue: params.accentHue,
+    accentSat: params.accentSat,
+    accentLight: params.accentLight,
+    commentLight: params.commentLight,
+    accentOffsets: accentOffsets ?? {
+      red: { hue: 0 }, orange: { hue: 0 }, yellow: { hue: 0 }, green: { hue: 0 },
+      cyan: { hue: 0 }, blue: { hue: 0 }, purple: { hue: 0 }, pink: { hue: 0 },
     },
   };
 
+  if (params.colorOverrides && Object.keys(params.colorOverrides).length > 0) {
+    definition.colorOverrides = params.colorOverrides;
+  }
+
+  const themeDefinition = { name: themeName, variant, definition };
   return JSON.stringify(themeDefinition, null, 2);
 };
 
@@ -145,8 +146,6 @@ export const exportThemeDefinition = (
 ): string => {
   return createThemeDefinitionJson(params, accentOffsets, themeName, variant);
 };
-
-export const exportThemeParams = exportThemeDefinition;
 
 /**
  * Triggers a browser file download.

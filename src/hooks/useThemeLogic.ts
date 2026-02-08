@@ -5,13 +5,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ThemeManager } from '../classes/ThemeManager.js';
 import { triggerDownload, saveThemeToServer } from '../utils/exportUtils.js';
-import type { TabKey, AccentColorKey, Base24Colors } from '../types/index.js';
+import type { TabKey, AccentColorKey, Base24Colors, LockableColorKey } from '../types/index.js';
 
 export interface ThemeLogic {
   activeTheme: string;
   activeVariant: string;
   activeTab: TabKey;
-  selectedColorKey: AccentColorKey | null;
+  selectedColorKey: LockableColorKey | null;
   colors: Base24Colors;
   pageColors: Base24Colors;
   copied: boolean;
@@ -20,13 +20,20 @@ export interface ThemeLogic {
   switchTheme: (themeKey: string) => void;
   switchVariant: (variantKey: string) => void;
   setActiveTab: (tab: TabKey) => void;
-  setSelectedColor: (colorKey: AccentColorKey | null) => void;
+  setSelectedColor: (colorKey: LockableColorKey | null) => void;
 
   updateParam: (key: string, value: number) => void;
 
   updateColorAdjustment: (colorKey: AccentColorKey, hueOffset: number) => void;
   resetColorAdjustment: (colorKey: AccentColorKey) => void;
   resetColorToDefault: (colorKey: AccentColorKey) => void;
+
+  lockColor: (colorKey: LockableColorKey) => void;
+  unlockColor: (colorKey: LockableColorKey) => void;
+  isColorLocked: (colorKey: LockableColorKey) => boolean;
+  updateColorOverride: (colorKey: LockableColorKey, prop: 'hue' | 'saturation' | 'lightness', value: number) => void;
+  getColorHSL: (colorKey: LockableColorKey) => { hue: number; saturation: number; lightness: number };
+  copyBgToVariants: () => void;
 
   resetVariant: () => void;
   resetTheme: () => void;
@@ -76,25 +83,10 @@ export const useThemeLogic = (): ThemeLogic => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const selectedColorKey = themeManager.selectedColorKey;
-      if (selectedColorKey) {
-        if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          const currentOffset = themeManager.getColorAdjustment(selectedColorKey);
-          const newOffset = Math.max(-60, currentOffset - 5);
-          themeManager.updateColorAdjustment(selectedColorKey, newOffset);
-          triggerUpdate();
-        } else if (event.key === 'ArrowRight') {
-          event.preventDefault();
-          const currentOffset = themeManager.getColorAdjustment(selectedColorKey);
-          const newOffset = Math.min(60, currentOffset + 5);
-          themeManager.updateColorAdjustment(selectedColorKey, newOffset);
-          triggerUpdate();
-        } else if (event.key === 'Escape') {
-          event.preventDefault();
-          themeManager.setSelectedColor(null);
-          triggerUpdate();
-        }
+      if (themeManager.selectedColorKey && event.key === 'Escape') {
+        event.preventDefault();
+        themeManager.setSelectedColor(null);
+        triggerUpdate();
       }
     };
 
@@ -128,7 +120,7 @@ export const useThemeLogic = (): ThemeLogic => {
     triggerUpdate();
   }, [themeManager, triggerUpdate]);
 
-  const setSelectedColor = useCallback((colorKey: AccentColorKey | null) => {
+  const setSelectedColor = useCallback((colorKey: LockableColorKey | null) => {
     themeManager.setSelectedColor(colorKey);
     triggerUpdate();
   }, [themeManager, triggerUpdate]);
@@ -145,6 +137,34 @@ export const useThemeLogic = (): ThemeLogic => {
 
   const resetColorToDefault = useCallback((colorKey: AccentColorKey) => {
     themeManager.resetColorToDefault(colorKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const lockColor = useCallback((colorKey: LockableColorKey) => {
+    themeManager.lockColor(colorKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const unlockColor = useCallback((colorKey: LockableColorKey) => {
+    themeManager.unlockColor(colorKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const isColorLocked = useCallback((colorKey: LockableColorKey) => {
+    return themeManager.isColorLocked(colorKey);
+  }, [themeManager]);
+
+  const updateColorOverride = useCallback((colorKey: LockableColorKey, prop: 'hue' | 'saturation' | 'lightness', value: number) => {
+    themeManager.updateColorOverride(colorKey, prop, value);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const getColorHSL = useCallback((colorKey: LockableColorKey) => {
+    return themeManager.getColorHSL(colorKey);
+  }, [themeManager]);
+
+  const copyBgToVariants = useCallback(() => {
+    themeManager.copyBgToVariants();
     triggerUpdate();
   }, [themeManager, triggerUpdate]);
 
@@ -224,6 +244,13 @@ export const useThemeLogic = (): ThemeLogic => {
     updateColorAdjustment,
     resetColorAdjustment,
     resetColorToDefault,
+
+    lockColor,
+    unlockColor,
+    isColorLocked,
+    updateColorOverride,
+    getColorHSL,
+    copyBgToVariants,
 
     resetVariant,
     resetTheme,

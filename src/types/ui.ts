@@ -5,7 +5,7 @@
 /**
  * Available preview tab identifiers for code and UI previews.
  */
-export type TabKey = 'colors' | 'ui-preview' | 'vscode' | 'javascript' | 'python' | 'cpp' | 'terminal';
+export type TabKey = 'ui-preview' | 'vscode' | 'javascript' | 'python' | 'cpp' | 'terminal';
 
 /**
  * Slider component type classifications for gradient generation.

@@ -3,7 +3,7 @@
  */
 
 import { themeLoader } from '../utils/themeLoader.js';
-import { generateColors, getAccentOffset, getUserAdjustment } from '../utils/colorUtils.js';
+import { generateColors, getAccentOffset, getUserAdjustment, getEffectiveHSL } from '../utils/colorUtils.js';
 import {
   exportNeovimTheme,
   exportBase24Theme,
@@ -16,6 +16,9 @@ import type {
   BaseTheme,
   AccentOffsets,
   ThemeFileData,
+  LockableColorKey,
+  ColorOverride,
+  BackgroundColorKey,
 } from '../types/index.js';
 
 interface PersistedState {
@@ -33,7 +36,7 @@ const SESSION_KEY = 'lumina_session_id';
 export class ThemeManager {
   public activeTheme: string;
   public activeVariant: string;
-  public selectedColorKey: AccentColorKey | null = null;
+  public selectedColorKey: LockableColorKey | null = null;
 
   private themeCustomizations: Record<string, Record<string, ThemeParams>> = {};
   private currentSessionId: string;
@@ -221,7 +224,10 @@ export class ThemeManager {
 
     if (params.colorAdjustments) {
       Object.keys(params.colorAdjustments).forEach((colorKey) => {
-        const adjustment = params.colorAdjustments![colorKey as AccentColorKey];
+        const key = colorKey as AccentColorKey;
+        // Skip locked colors — they have their own absolute HSL
+        if (params.colorOverrides?.[key]) return;
+        const adjustment = params.colorAdjustments![key];
         if (adjustment) {
           const currentAbsoluteHue = oldAccentHue + adjustment.hueOffset;
           let newAbsoluteHue = currentAbsoluteHue + hueChange;
@@ -256,8 +262,88 @@ export class ThemeManager {
     this.setCurrentThemeParams(params);
   }
 
-  setSelectedColor(colorKey: AccentColorKey | null) {
+  setSelectedColor(colorKey: LockableColorKey | null) {
     this.selectedColorKey = colorKey;
+  }
+
+  lockColor(colorKey: LockableColorKey) {
+    const params = this.getCurrentThemeParams();
+    const hsl = getEffectiveHSL(params, colorKey, this.getActiveAccentOffsets());
+    if (!params.colorOverrides) params.colorOverrides = {};
+    params.colorOverrides[colorKey] = { ...hsl };
+    this.setCurrentThemeParams(params);
+  }
+
+  unlockColor(colorKey: LockableColorKey) {
+    const params = this.getCurrentThemeParams();
+    if (params.colorOverrides?.[colorKey]) {
+      delete params.colorOverrides[colorKey];
+      // Clean up empty object
+      if (Object.keys(params.colorOverrides).length === 0) {
+        delete params.colorOverrides;
+      }
+    }
+    // Clear any hue offset for accent keys
+    if (params.colorAdjustments?.[colorKey as AccentColorKey]) {
+      delete params.colorAdjustments[colorKey as AccentColorKey];
+    }
+    this.setCurrentThemeParams(params);
+  }
+
+  isColorLocked(colorKey: LockableColorKey): boolean {
+    return !!this.getCurrentThemeParams().colorOverrides?.[colorKey];
+  }
+
+  updateColorOverride(colorKey: LockableColorKey, prop: 'hue' | 'saturation' | 'lightness', value: number) {
+    const params = this.getCurrentThemeParams();
+    const override = params.colorOverrides?.[colorKey];
+    if (!override) return;
+    override[prop] = value;
+    this.setCurrentThemeParams(params);
+  }
+
+  getColorHSL(colorKey: LockableColorKey): { hue: number; saturation: number; lightness: number } {
+    return getEffectiveHSL(this.getCurrentThemeParams(), colorKey, this.getActiveAccentOffsets());
+  }
+
+  copyBgToVariants() {
+    const params = this.getCurrentThemeParams();
+    const bgOverrides: Partial<Record<LockableColorKey, ColorOverride>> = {};
+    const bgKeys: BackgroundColorKey[] = ['base00', 'base01', 'base02'];
+    for (const key of bgKeys) {
+      if (params.colorOverrides?.[key]) {
+        bgOverrides[key] = { ...params.colorOverrides[key]! };
+      }
+    }
+
+    for (const variantKey of themeLoader.getVariantsForTheme(this.activeTheme)) {
+      if (variantKey === this.activeVariant) continue;
+      const variantParams = this.themeCustomizations[this.activeTheme]?.[variantKey]
+        ?? themeLoader.getDefaultParams(this.activeTheme, variantKey);
+
+      variantParams.bgHue = params.bgHue;
+      variantParams.bgSat = params.bgSat;
+      variantParams.bgLight = params.bgLight;
+
+      // Copy bg overrides
+      if (!variantParams.colorOverrides) variantParams.colorOverrides = {};
+      for (const key of bgKeys) {
+        if (bgOverrides[key]) {
+          variantParams.colorOverrides[key] = { ...bgOverrides[key]! };
+        } else {
+          delete variantParams.colorOverrides[key];
+        }
+      }
+      if (Object.keys(variantParams.colorOverrides).length === 0) {
+        delete variantParams.colorOverrides;
+      }
+
+      if (!this.themeCustomizations[this.activeTheme]) {
+        this.themeCustomizations[this.activeTheme] = {};
+      }
+      this.themeCustomizations[this.activeTheme][variantKey] = { ...variantParams };
+    }
+    this.saveToStorage();
   }
 
   getColorAdjustment(colorKey: AccentColorKey): number {
@@ -372,22 +458,28 @@ export class ThemeManager {
     const params = this.getCurrentThemeParams();
     const offsets = this.getActiveAccentOffsets();
 
+    const definition: ThemeFileData['definition'] = {
+      bgHue: params.bgHue,
+      bgSat: params.bgSat,
+      bgLight: params.bgLight,
+      accentHue: params.accentHue,
+      accentSat: params.accentSat,
+      accentLight: params.accentLight,
+      commentLight: params.commentLight,
+      accentOffsets: offsets ?? {
+        red: { hue: 0 }, orange: { hue: 0 }, yellow: { hue: 0 }, green: { hue: 0 },
+        cyan: { hue: 0 }, blue: { hue: 0 }, purple: { hue: 0 }, pink: { hue: 0 },
+      },
+    };
+
+    if (params.colorOverrides && Object.keys(params.colorOverrides).length > 0) {
+      definition.colorOverrides = params.colorOverrides;
+    }
+
     const themeFile: ThemeFileData = {
       name: themeInfo.name,
       variant: this.activeVariant,
-      definition: {
-        bgHue: params.bgHue,
-        bgSat: params.bgSat,
-        bgLight: params.bgLight,
-        accentHue: params.accentHue,
-        accentSat: params.accentSat,
-        accentLight: params.accentLight,
-        commentLight: params.commentLight,
-        accentOffsets: offsets ?? {
-          red: { hue: 0 }, orange: { hue: 0 }, yellow: { hue: 0 }, green: { hue: 0 },
-          cyan: { hue: 0 }, blue: { hue: 0 }, purple: { hue: 0 }, pink: { hue: 0 },
-        },
-      },
+      definition,
     };
 
     return JSON.stringify(themeFile, null, 2);
