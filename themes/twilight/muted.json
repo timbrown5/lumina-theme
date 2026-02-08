@@ -1,0 +1,23 @@
+{
+  "name": "Lumina Twilight",
+  "variant": "muted",
+  "definition": {
+    "bgHue": 242,
+    "bgSat": 40,
+    "bgLight": 12,
+    "accentHue": 0,
+    "accentSat": 85,
+    "accentLight": 75,
+    "commentLight": 55,
+    "accentOffsets": {
+      "red": { "hue": 0 },
+      "orange": { "hue": -18 },
+      "yellow": { "hue": -10 },
+      "green": { "hue": -10 },
+      "cyan": { "hue": -10 },
+      "blue": { "hue": 0 },
+      "purple": { "hue": 12 },
+      "pink": { "hue": 0 }
+    }
+  }
+}

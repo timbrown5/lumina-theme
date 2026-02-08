@@ -1,36 +1,26 @@
 /**
  * React hook providing component interface to ThemeManager with singleton pattern.
- *
- * Serves as the primary interface between React components and the theme management
- * system. This hook ensures that ThemeManager instances persist across component
- * re-renders while providing a clean, React-friendly API for theme operations.
- * It handles UI updates and state synchronization automatically.
- *
- * Interface features:
- * - Singleton ThemeManager instance management
- * - React state synchronization with theme changes
- * - Keyboard shortcut handling for color editing
- * - Export function wrappers with clipboard integration
- * - Automatic UI updates when theme state changes
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ThemeManager } from '../classes/ThemeManager.js';
-import type { ThemeKey, FlavorKey, TabKey, AccentColorKey, Base24Colors } from '../types/index.js';
+import { triggerDownload, saveThemeToServer } from '../utils/exportUtils.js';
+import type { TabKey, AccentColorKey, Base24Colors, LockableColorKey } from '../types/index.js';
 
 export interface ThemeLogic {
-  activeTheme: ThemeKey;
-  activeFlavor: FlavorKey;
+  activeTheme: string;
+  activeVariant: string;
   activeTab: TabKey;
-  selectedColorKey: AccentColorKey | null;
+  selectedColorKey: LockableColorKey | null;
   colors: Base24Colors;
   pageColors: Base24Colors;
   copied: boolean;
+  isLocalDev: boolean;
 
-  switchTheme: (themeKey: ThemeKey) => void;
-  switchFlavor: (flavor: FlavorKey) => void;
+  switchTheme: (themeKey: string) => void;
+  switchVariant: (variantKey: string) => void;
   setActiveTab: (tab: TabKey) => void;
-  setSelectedColor: (colorKey: AccentColorKey | null) => void;
+  setSelectedColor: (colorKey: LockableColorKey | null) => void;
 
   updateParam: (key: string, value: number) => void;
 
@@ -38,46 +28,42 @@ export interface ThemeLogic {
   resetColorAdjustment: (colorKey: AccentColorKey) => void;
   resetColorToDefault: (colorKey: AccentColorKey) => void;
 
-  resetFlavor: () => void;
+  lockColor: (colorKey: LockableColorKey) => void;
+  unlockColor: (colorKey: LockableColorKey) => void;
+  isColorLocked: (colorKey: LockableColorKey) => boolean;
+  updateColorOverride: (colorKey: LockableColorKey, prop: 'hue' | 'saturation' | 'lightness', value: number) => void;
+  getColorHSL: (colorKey: LockableColorKey) => { hue: number; saturation: number; lightness: number };
+  copyBgToVariants: () => void;
+
+  resetVariant: () => void;
   resetTheme: () => void;
 
   exportNvimTheme: () => void;
   exportTheme: () => void;
-  exportStylixTheme: () => void;
   exportThemeDefinition: () => void;
-  copyThemeParams: () => void;
+  downloadThemeJson: () => void;
+  saveThemeToFile: () => Promise<boolean>;
 
-  getThemeInfo: () => { name: string; tagline: string; inspirations: string };
+  getThemeInfo: () => { name: string; bgHue: number; bgSat: number; bgLight: number };
   getCurrentParams: () => any;
   getThemeOffset: (colorKey: AccentColorKey) => number;
-  getAllThemeKeys: () => ThemeKey[];
-  getAllFlavorKeys: () => FlavorKey[];
-  getResetLabels: () => { flavor: string; theme: string };
+  getAllThemeKeys: () => string[];
+  getVariantsForTheme: (themeKey?: string) => string[];
+  getResetLabels: () => { variant: string; theme: string };
 }
 
-/**
- * Global singleton to prevent recreation across component re-renders.
- */
 let globalThemeManager: ThemeManager | null = null;
 
-/**
- * Gets or creates the global ThemeManager instance.
- * @returns ThemeManager singleton instance
- */
 const getThemeManager = (): ThemeManager => {
   if (!globalThemeManager) {
-    console.log('useThemeLogic: Creating new ThemeManager instance');
     globalThemeManager = new ThemeManager();
-  } else {
-    console.log('useThemeLogic: Reusing existing ThemeManager instance');
   }
   return globalThemeManager;
 };
 
-/**
- * Main theme hook providing React interface to ThemeManager.
- * @returns ThemeLogic interface with all theme operations
- */
+const isLocal = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 export const useThemeLogic = (): ThemeLogic => {
   const themeManagerRef = useRef<ThemeManager | null>(null);
 
@@ -91,38 +77,16 @@ export const useThemeLogic = (): ThemeLogic => {
   const [activeTab, setActiveTab] = useState<TabKey>('ui-preview');
   const [copied, setCopied] = useState<boolean>(false);
 
-  /**
-   * Triggers React re-render when theme state changes.
-   */
   const triggerUpdate = useCallback(() => {
-    console.log('useThemeLogic: Triggering update');
     forceUpdate({});
   }, []);
 
-  /**
-   * Handles keyboard shortcuts for color editing.
-   */
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const selectedColorKey = themeManager.selectedColorKey;
-      if (selectedColorKey) {
-        if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          const currentOffset = themeManager.getColorAdjustment(selectedColorKey);
-          const newOffset = Math.max(-60, currentOffset - 5);
-          themeManager.updateColorAdjustment(selectedColorKey, newOffset);
-          triggerUpdate();
-        } else if (event.key === 'ArrowRight') {
-          event.preventDefault();
-          const currentOffset = themeManager.getColorAdjustment(selectedColorKey);
-          const newOffset = Math.min(60, currentOffset + 5);
-          themeManager.updateColorAdjustment(selectedColorKey, newOffset);
-          triggerUpdate();
-        } else if (event.key === 'Escape') {
-          event.preventDefault();
-          themeManager.setSelectedColor(null);
-          triggerUpdate();
-        }
+      if (themeManager.selectedColorKey && event.key === 'Escape') {
+        event.preventDefault();
+        themeManager.setSelectedColor(null);
+        triggerUpdate();
       }
     };
 
@@ -130,141 +94,90 @@ export const useThemeLogic = (): ThemeLogic => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [themeManager, triggerUpdate]);
 
-  /**
-   * Updates theme parameter by key name.
-   * @param key - Parameter name (bgHue, accentSat, etc.)
-   * @param value - New parameter value
-   */
   const updateParam = useCallback(
     (key: string, value: number) => {
-      console.log(`useThemeLogic: Updating ${key} to ${value}`);
       switch (key) {
-        case 'bgHue':
-          themeManager.updateBackgroundHue(value);
-          break;
-        case 'bgSat':
-          themeManager.updateBackgroundSat(value);
-          break;
-        case 'bgLight':
-          themeManager.updateBackgroundLight(value);
-          break;
-        case 'accentHue':
-          themeManager.updateAccentHue(value);
-          break;
-        case 'accentSat':
-          themeManager.updateAccentSat(value);
-          break;
-        case 'accentLight':
-          themeManager.updateAccentLight(value);
-          break;
-        case 'commentLight':
-          themeManager.updateCommentLight(value);
-          break;
-        default:
-          console.warn(`Unknown parameter: ${key}`);
+        case 'bgHue': themeManager.updateBackgroundHue(value); break;
+        case 'bgSat': themeManager.updateBackgroundSat(value); break;
+        case 'bgLight': themeManager.updateBackgroundLight(value); break;
+        case 'accentHue': themeManager.updateAccentHue(value); break;
+        case 'accentSat': themeManager.updateAccentSat(value); break;
+        case 'accentLight': themeManager.updateAccentLight(value); break;
+        case 'commentLight': themeManager.updateCommentLight(value); break;
       }
       triggerUpdate();
     },
     [themeManager, triggerUpdate]
   );
 
-  /**
-   * Switches to a new theme.
-   * @param themeKey - The theme to switch to
-   */
-  const switchTheme = useCallback(
-    (themeKey: ThemeKey) => {
-      console.log(`useThemeLogic: Switching theme to ${themeKey}`);
-      themeManager.switchTheme(themeKey);
-      triggerUpdate();
-    },
-    [themeManager, triggerUpdate]
-  );
-
-  /**
-   * Switches to a new flavor while preserving customizations.
-   * @param flavor - The flavor to switch to
-   */
-  const switchFlavor = useCallback(
-    (flavor: FlavorKey) => {
-      console.log(`useThemeLogic: Switching flavor to ${flavor}`);
-      themeManager.switchFlavor(flavor);
-      triggerUpdate();
-    },
-    [themeManager, triggerUpdate]
-  );
-
-  /**
-   * Sets the currently selected color for editing.
-   * @param colorKey - The accent color to select, or null to deselect
-   */
-  const setSelectedColor = useCallback(
-    (colorKey: AccentColorKey | null) => {
-      themeManager.setSelectedColor(colorKey);
-      triggerUpdate();
-    },
-    [themeManager, triggerUpdate]
-  );
-
-  /**
-   * Updates hue adjustment for a specific accent color.
-   * @param colorKey - The accent color to adjust
-   * @param hueOffset - The hue adjustment in degrees
-   */
-  const updateColorAdjustment = useCallback(
-    (colorKey: AccentColorKey, hueOffset: number) => {
-      themeManager.updateColorAdjustment(colorKey, hueOffset);
-      triggerUpdate();
-    },
-    [themeManager, triggerUpdate]
-  );
-
-  /**
-   * Resets color adjustment for a specific accent color.
-   * @param colorKey - The accent color to reset
-   */
-  const resetColorAdjustment = useCallback(
-    (colorKey: AccentColorKey) => {
-      themeManager.resetColorAdjustment(colorKey);
-      triggerUpdate();
-    },
-    [themeManager, triggerUpdate]
-  );
-
-  /**
-   * Resets color to default (alias for resetColorAdjustment).
-   * @param colorKey - The accent color to reset
-   */
-  const resetColorToDefault = useCallback(
-    (colorKey: AccentColorKey) => {
-      themeManager.resetColorToDefault(colorKey);
-      triggerUpdate();
-    },
-    [themeManager, triggerUpdate]
-  );
-
-  /**
-   * Resets current flavor to defaults.
-   */
-  const resetFlavor = useCallback(() => {
-    console.log('useThemeLogic: Reset flavor');
-    themeManager.resetFlavor();
+  const switchTheme = useCallback((themeKey: string) => {
+    themeManager.switchTheme(themeKey);
     triggerUpdate();
   }, [themeManager, triggerUpdate]);
 
-  /**
-   * Resets entire theme to defaults.
-   */
+  const switchVariant = useCallback((variantKey: string) => {
+    themeManager.switchVariant(variantKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const setSelectedColor = useCallback((colorKey: LockableColorKey | null) => {
+    themeManager.setSelectedColor(colorKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const updateColorAdjustment = useCallback((colorKey: AccentColorKey, hueOffset: number) => {
+    themeManager.updateColorAdjustment(colorKey, hueOffset);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const resetColorAdjustment = useCallback((colorKey: AccentColorKey) => {
+    themeManager.resetColorAdjustment(colorKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const resetColorToDefault = useCallback((colorKey: AccentColorKey) => {
+    themeManager.resetColorToDefault(colorKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const lockColor = useCallback((colorKey: LockableColorKey) => {
+    themeManager.lockColor(colorKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const unlockColor = useCallback((colorKey: LockableColorKey) => {
+    themeManager.unlockColor(colorKey);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const isColorLocked = useCallback((colorKey: LockableColorKey) => {
+    return themeManager.isColorLocked(colorKey);
+  }, [themeManager]);
+
+  const updateColorOverride = useCallback((colorKey: LockableColorKey, prop: 'hue' | 'saturation' | 'lightness', value: number) => {
+    themeManager.updateColorOverride(colorKey, prop, value);
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const getColorHSL = useCallback((colorKey: LockableColorKey) => {
+    return themeManager.getColorHSL(colorKey);
+  }, [themeManager]);
+
+  const copyBgToVariants = useCallback(() => {
+    themeManager.copyBgToVariants();
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
+  const resetVariant = useCallback(() => {
+    themeManager.resetVariant();
+    triggerUpdate();
+  }, [themeManager, triggerUpdate]);
+
   const resetTheme = useCallback(() => {
-    console.log('useThemeLogic: Reset theme');
     themeManager.resetTheme();
     triggerUpdate();
   }, [themeManager, triggerUpdate]);
 
-  /**
-   * Copies content to clipboard and shows feedback.
-   * @param content - The content to copy
-   */
   const copyToClipboard = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => {
       setCopied(true);
@@ -272,107 +185,57 @@ export const useThemeLogic = (): ThemeLogic => {
     });
   }, []);
 
-  /**
-   * Exports Neovim theme to clipboard.
-   */
   const exportNvimTheme = useCallback(() => {
     copyToClipboard(themeManager.exportNeovim());
   }, [themeManager, copyToClipboard]);
 
-  /**
-   * Exports Base24 theme to clipboard.
-   */
   const exportTheme = useCallback(() => {
     copyToClipboard(themeManager.exportBase24());
   }, [themeManager, copyToClipboard]);
 
-  /**
-   * Exports Stylix theme to clipboard.
-   */
-  const exportStylixTheme = useCallback(() => {
-    copyToClipboard(themeManager.exportStylix());
-  }, [themeManager, copyToClipboard]);
-
-  /**
-   * Exports theme definition to clipboard.
-   */
   const exportThemeDefinition = useCallback(() => {
     copyToClipboard(themeManager.exportThemeDefinition());
   }, [themeManager, copyToClipboard]);
 
-  /**
-   * Exports theme parameters to clipboard.
-   */
-  const copyThemeParams = useCallback(() => {
-    copyToClipboard(themeManager.exportThemeJson());
-  }, [themeManager, copyToClipboard]);
-
-  /**
-   * Gets current theme metadata.
-   * @returns Theme information object
-   */
-  const getThemeInfo = useCallback(() => {
-    return themeManager.getThemeInfo();
+  const downloadThemeJson = useCallback(() => {
+    const json = themeManager.getThemeFileJson();
+    const filename = `${themeManager.activeVariant}.json`;
+    triggerDownload(filename, json);
   }, [themeManager]);
 
-  /**
-   * Gets current theme parameters.
-   * @returns Current theme parameters
-   */
-  const getCurrentParams = useCallback(() => {
-    return themeManager.getCurrentParams();
+  const saveThemeToFile = useCallback(async (): Promise<boolean> => {
+    const json = themeManager.getThemeFileJson();
+    const path = themeManager.getThemeFilePath();
+    const ok = await saveThemeToServer(path, json);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+    return ok;
   }, [themeManager]);
 
-  /**
-   * Gets theme offset for a specific color.
-   * @param colorKey - The accent color to query
-   * @returns Theme-specific hue offset
-   */
-  const getThemeOffset = useCallback(
-    (colorKey: AccentColorKey) => {
-      return themeManager.getThemeOffset(colorKey);
-    },
-    [themeManager]
-  );
-
-  /**
-   * Gets all available theme keys.
-   * @returns Array of theme identifiers
-   */
-  const getAllThemeKeys = useCallback(() => {
-    return themeManager.getAllThemeKeys();
-  }, [themeManager]);
-
-  /**
-   * Gets all available flavor keys.
-   * @returns Array of flavor identifiers
-   */
-  const getAllFlavorKeys = useCallback(() => {
-    return themeManager.getAllFlavorKeys();
-  }, [themeManager]);
-
-  /**
-   * Gets formatted reset button labels.
-   * @returns Object with flavor and theme reset button labels
-   */
-  const getResetLabels = useCallback(() => {
-    return themeManager.getResetLabels();
-  }, [themeManager]);
+  const getThemeInfo = useCallback(() => themeManager.getThemeInfo(), [themeManager]);
+  const getCurrentParams = useCallback(() => themeManager.getCurrentParams(), [themeManager]);
+  const getThemeOffset = useCallback((colorKey: AccentColorKey) => themeManager.getThemeOffset(colorKey), [themeManager]);
+  const getAllThemeKeys = useCallback(() => themeManager.getAllThemeKeys(), [themeManager]);
+  const getVariantsForTheme = useCallback((themeKey?: string) => themeManager.getVariantsForTheme(themeKey), [themeManager]);
+  const getResetLabels = useCallback(() => themeManager.getResetLabels(), [themeManager]);
 
   const colors = themeManager.getCurrentColors();
   const pageColors = colors;
 
   return {
     activeTheme: themeManager.activeTheme,
-    activeFlavor: themeManager.activeFlavor,
+    activeVariant: themeManager.activeVariant,
     activeTab,
     selectedColorKey: themeManager.selectedColorKey,
     colors,
     pageColors,
     copied,
+    isLocalDev: isLocal,
 
     switchTheme,
-    switchFlavor,
+    switchVariant,
     setActiveTab,
     setSelectedColor,
 
@@ -382,20 +245,27 @@ export const useThemeLogic = (): ThemeLogic => {
     resetColorAdjustment,
     resetColorToDefault,
 
-    resetFlavor,
+    lockColor,
+    unlockColor,
+    isColorLocked,
+    updateColorOverride,
+    getColorHSL,
+    copyBgToVariants,
+
+    resetVariant,
     resetTheme,
 
     exportNvimTheme,
     exportTheme,
-    exportStylixTheme,
     exportThemeDefinition,
-    copyThemeParams,
+    downloadThemeJson,
+    saveThemeToFile,
 
     getThemeInfo,
     getCurrentParams,
     getThemeOffset,
     getAllThemeKeys,
-    getAllFlavorKeys,
+    getVariantsForTheme,
     getResetLabels,
   };
 };

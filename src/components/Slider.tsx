@@ -29,6 +29,7 @@ interface SliderProps {
   previewColor?: string;
   previewLabel?: string;
   colors: Base24Colors;
+  onPreviewClick?: () => void;
 }
 
 const Slider: React.FC<SliderProps> = ({
@@ -42,6 +43,7 @@ const Slider: React.FC<SliderProps> = ({
   previewColor,
   previewLabel,
   colors,
+  onPreviewClick,
 }) => {
   const safeValue = value ?? min ?? 0;
   const [inputValue, setInputValue] = useState<string>(safeValue.toString());
@@ -169,8 +171,10 @@ const Slider: React.FC<SliderProps> = ({
       {previewColor && (
         <div className="flex items-center gap-2 mt-1">
           <div
-            className="w-4 h-4 rounded border border-white border-opacity-30"
+            className={`w-4 h-4 rounded border border-white border-opacity-30${onPreviewClick ? ' cursor-pointer hover:scale-125 transition-transform' : ''}`}
             style={{ backgroundColor: previewColor }}
+            onClick={onPreviewClick}
+            title={onPreviewClick ? 'Click to pick a color' : undefined}
           />
           {previewLabel && (
             <span className="text-xs" style={{ color: colors.base04 }}>

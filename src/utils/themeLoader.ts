@@ -1,159 +1,115 @@
 /**
- * Loads and manages theme definitions from JSON files at build time.
+ * Dynamically discovers and loads theme definitions from the themes/ directory.
  *
- * Handles the discovery, loading, and management of available themes within
- * the application. This module provides the foundation for theme availability
- * and ensures type-safe access to theme configurations while handling graceful
- * fallbacks when themes are missing or corrupted.
- *
- * Core functionality:
- * - Build-time theme discovery and loading from JSON files
- * - Type-safe theme registry with validation
- * - Graceful fallback handling for missing themes
- * - Theme and flavor metadata access
- * - Asynchronous loading interface for UI components
+ * Uses Vite's import.meta.glob to discover all theme JSON files at build time.
+ * Theme keys and variant keys are derived from the directory structure:
+ *   themes/<themeKey>/<variantKey>.json
  */
 
-import type { ThemeKey, FlavorKey, BaseTheme } from '../types/index.js';
+import type { BaseTheme, ThemeParams, ThemeFileData, AccentOffsets } from '../types/index.ts';
 
-// Import all theme JSON files at build time
-import midnightTheme from '../themes/midnight.json';
-import twilightTheme from '../themes/twilight.json';
-import dawnTheme from '../themes/dawn.json';
-import noonTheme from '../themes/noon.json';
+// Eagerly import all theme JSON files at build time
+const themeModules = import.meta.glob('/themes/**/*.json', { eager: true }) as Record<string, { default: ThemeFileData }>;
 
-interface AccentOffsetDefinition {
-  hue: number;
-  // Future extensions:
-  saturation?: number;
-  lightness?: number;
+interface ThemeVariantEntry {
+  themeKey: string;
+  variantKey: string;
+  data: ThemeFileData;
 }
 
-interface ThemeDefinition {
-  name: string;
-  tagline: string;
-  inspirations: string;
-  bgHue: number;
-  bgSat: number;
-  bgLight: number;
-  accentOffsets: {
-    red: AccentOffsetDefinition;
-    orange: AccentOffsetDefinition;
-    yellow: AccentOffsetDefinition;
-    green: AccentOffsetDefinition;
-    cyan: AccentOffsetDefinition;
-    blue: AccentOffsetDefinition;
-    purple: AccentOffsetDefinition;
-    pink: AccentOffsetDefinition;
-  };
-  flavors: Record<
-    FlavorKey,
-    {
-      accentHue: number;
-      accentSat: number;
-      accentLight: number;
-      commentLight: number;
+// Parse all discovered theme files into a structured registry
+function buildRegistry(): {
+  themes: Map<string, Map<string, ThemeFileData>>;
+  themeKeys: string[];
+} {
+  const themes = new Map<string, Map<string, ThemeFileData>>();
+
+  for (const [path, module] of Object.entries(themeModules)) {
+    // Path format: /themes/<themeKey>/<variantKey>.json
+    const match = path.match(/^\/themes\/([^/]+)\/([^/]+)\.json$/);
+    if (!match) continue;
+
+    const [, themeKey, variantKey] = match;
+    const data = (module as any).default ?? module;
+
+    if (!themes.has(themeKey)) {
+      themes.set(themeKey, new Map());
     }
-  >;
+    themes.get(themeKey)!.set(variantKey, data as ThemeFileData);
+  }
+
+  const themeKeys = Array.from(themes.keys()).sort();
+  return { themes, themeKeys };
 }
 
-const THEME_DEFINITIONS: Record<ThemeKey, ThemeDefinition> = {
-  midnight: midnightTheme as ThemeDefinition,
-  twilight: twilightTheme as ThemeDefinition,
-  dawn: dawnTheme as ThemeDefinition,
-  noon: noonTheme as ThemeDefinition,
-};
-
-const DEFAULT_FLAVORS: Record<FlavorKey, any> = {
-  muted: {
-    accentHue: 0,
-    accentSat: 50,
-    accentLight: 65,
-    commentLight: 45,
-  },
-  balanced: {
-    accentHue: 0,
-    accentSat: 70,
-    accentLight: 60,
-    commentLight: 40,
-  },
-  bold: {
-    accentHue: 0,
-    accentSat: 85,
-    accentLight: 55,
-    commentLight: 35,
-  },
-};
+const registry = buildRegistry();
 
 class ThemeLoader {
-  private isLoaded = true; // Since we're importing at build time
-  private loadPromise: Promise<void>;
-
-  constructor() {
-    this.loadPromise = Promise.resolve();
+  getAllThemeKeys(): string[] {
+    return registry.themeKeys;
   }
 
-  async waitForLoad(): Promise<void> {
-    return this.loadPromise;
+  getVariantsForTheme(themeKey: string): string[] {
+    const variants = registry.themes.get(themeKey);
+    if (!variants) return [];
+    return Array.from(variants.keys()).sort();
   }
 
-  getAllThemeKeys(): ThemeKey[] {
-    return Object.keys(THEME_DEFINITIONS) as ThemeKey[];
+  getThemeVariant(themeKey: string, variantKey: string): ThemeFileData | null {
+    return registry.themes.get(themeKey)?.get(variantKey) ?? null;
   }
 
-  getAllFlavorKeys(): FlavorKey[] {
-    return Object.keys(DEFAULT_FLAVORS) as FlavorKey[];
-  }
-
-  getThemeInfo(themeKey: ThemeKey): BaseTheme | null {
-    const theme = THEME_DEFINITIONS[themeKey];
-    if (!theme) return null;
-
+  getThemeInfo(themeKey: string): BaseTheme | null {
+    const variants = registry.themes.get(themeKey);
+    if (!variants || variants.size === 0) return null;
+    // Use first variant to get theme metadata
+    const first = variants.values().next().value;
+    if (!first) return null;
     return {
-      name: theme.name,
-      tagline: theme.tagline,
-      inspirations: theme.inspirations,
-      bgHue: theme.bgHue,
-      bgSat: theme.bgSat,
-      bgLight: theme.bgLight,
+      name: first.name,
+      bgHue: first.definition.bgHue,
+      bgSat: first.definition.bgSat,
+      bgLight: first.definition.bgLight,
     };
   }
 
-  getFlavorInfo(flavorKey: FlavorKey): any {
-    return DEFAULT_FLAVORS[flavorKey] || null;
-  }
-
-  getTheme(themeKey: ThemeKey): BaseTheme {
-    const themeInfo = this.getThemeInfo(themeKey);
-    if (!themeInfo) {
-      console.warn(`Theme '${themeKey}' not found, using midnight`);
-      return this.getThemeInfo('midnight')!;
+  getTheme(themeKey: string): BaseTheme {
+    const info = this.getThemeInfo(themeKey);
+    if (!info) {
+      const fallbackKey = registry.themeKeys[0];
+      if (fallbackKey) return this.getThemeInfo(fallbackKey)!;
+      return { name: 'Unknown', bgHue: 270, bgSat: 25, bgLight: 6 };
     }
-    return themeInfo;
+    return info;
   }
 
-  getFlavor(flavorKey: FlavorKey): any {
-    const flavor = DEFAULT_FLAVORS[flavorKey];
-    if (!flavor) {
-      console.warn(`Flavor '${flavorKey}' not found, using balanced`);
-      return DEFAULT_FLAVORS.balanced;
+  getDefaultParams(themeKey: string, variantKey: string): ThemeParams {
+    const data = this.getThemeVariant(themeKey, variantKey);
+    if (!data) {
+      return { bgHue: 270, bgSat: 25, bgLight: 6, accentHue: 0, accentSat: 85, accentLight: 75, commentLight: 55 };
     }
-    return flavor;
-  }
-
-  // Get the full theme definition including flavors
-  getThemeDefinition(themeKey: ThemeKey): ThemeDefinition | null {
-    return THEME_DEFINITIONS[themeKey] || null;
-  }
-
-  // Get flavor data from the theme definition
-  getThemeFlavor(themeKey: ThemeKey, flavorKey: FlavorKey): any {
-    const theme = THEME_DEFINITIONS[themeKey];
-    if (theme?.flavors?.[flavorKey]) {
-      return theme.flavors[flavorKey];
+    const d = data.definition;
+    const params: ThemeParams = {
+      bgHue: d.bgHue,
+      bgSat: d.bgSat,
+      bgLight: d.bgLight,
+      accentHue: d.accentHue,
+      accentSat: d.accentSat,
+      accentLight: d.accentLight,
+      commentLight: d.commentLight,
+      colorAdjustments: {},
+    };
+    if (d.colorOverrides && Object.keys(d.colorOverrides).length > 0) {
+      params.colorOverrides = d.colorOverrides;
     }
-    return this.getFlavor(flavorKey);
+    return params;
   }
+
+  getAccentOffsets(themeKey: string, variantKey: string): AccentOffsets | null {
+    const data = this.getThemeVariant(themeKey, variantKey);
+    return data?.definition.accentOffsets ?? null;
+  }
+
 }
 
 export const themeLoader = new ThemeLoader();

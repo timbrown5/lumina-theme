@@ -13,6 +13,6 @@
  * - Export format type definitions
  */
 
-export * from './base24.js';
-export * from './theme.js';
-export * from './ui.js';
+export * from './base24.ts';
+export * from './theme.ts';
+export * from './ui.ts';

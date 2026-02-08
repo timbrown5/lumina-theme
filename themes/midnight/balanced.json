@@ -1,0 +1,39 @@
+{
+  "name": "Lumina Midnight",
+  "variant": "balanced",
+  "definition": {
+    "bgHue": 270,
+    "bgSat": 25,
+    "bgLight": 8,
+    "accentHue": 0,
+    "accentSat": 85,
+    "accentLight": 65,
+    "commentLight": 55,
+    "accentOffsets": {
+      "red": {
+        "hue": 0
+      },
+      "orange": {
+        "hue": -5
+      },
+      "yellow": {
+        "hue": -10
+      },
+      "green": {
+        "hue": -10
+      },
+      "cyan": {
+        "hue": -10
+      },
+      "blue": {
+        "hue": 0
+      },
+      "purple": {
+        "hue": 0
+      },
+      "pink": {
+        "hue": 0
+      }
+    }
+  }
+}

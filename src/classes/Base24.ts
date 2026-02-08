@@ -14,8 +14,8 @@
  * - Export utilities for Base24 JSON format
  */
 
-import type { Base24Colors, AccentColorKey } from '../types/index.js';
-import { getStandardOffset } from '../utils/colorUtils.js';
+import type { Base24Colors, AccentColorKey } from '../types/index.ts';
+import { getStandardOffset } from '../utils/colorUtils.ts';
 
 export interface ColorGroup {
   key: string;
@@ -137,11 +137,46 @@ export class Base24 {
     );
   }
 
-  static getColorsByGroup() {
-    return {
-      base: Base24.BASE_COLORS,
-      accent: Base24.ACCENT_COLORS,
-      muted: Base24.MUTED_COLORS,
-    };
+  /**
+   * Gets organized color sections for UI display.
+   * @returns Array of color sections with metadata
+   */
+  static readonly BACKGROUND_COLORS: ColorGroup[] = [
+    { key: 'base00', name: 'Background', description: 'Primary background color' },
+    { key: 'base01', name: 'Alt Background', description: 'Secondary background for panels' },
+    { key: 'base02', name: 'Selection', description: 'Selection background' },
+  ];
+
+  static readonly FOREGROUND_UI_COLORS: ColorGroup[] = [
+    { key: 'base03', name: 'Comments', description: 'Comments and subtle text' },
+    { key: 'base04', name: 'Secondary Text', description: 'Secondary foreground (low contrast)' },
+    { key: 'base05', name: 'Main Text', description: 'Primary foreground (main text)' },
+    { key: 'base06', name: 'Light Surface', description: 'Emphasized foreground' },
+    { key: 'base07', name: 'Light Accent', description: 'Strong emphasis (high contrast)' },
+  ];
+
+  static getColorSections(): ColorSection[] {
+    return [
+      {
+        title: 'Background Colors',
+        colors: this.BACKGROUND_COLORS,
+        editable: true,
+      },
+      {
+        title: 'Foreground & UI',
+        colors: this.FOREGROUND_UI_COLORS,
+        editable: true,
+      },
+      {
+        title: 'Accent Colors',
+        colors: this.ACCENT_COLORS,
+        editable: true,
+      },
+      {
+        title: 'Muted Accents',
+        colors: this.MUTED_COLORS,
+        editable: true,
+      },
+    ];
   }
 }
