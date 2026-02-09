@@ -1,0 +1,23 @@
+{
+  "name": "Twilight v3",
+  "variant": "bold",
+  "definition": {
+    "bgHue": 235,
+    "bgSat": 35,
+    "bgLight": 13,
+    "accentHue": 5,
+    "accentSat": 95,
+    "accentLight": 62,
+    "commentLight": 52,
+    "accentOffsets": {
+      "red": { "hue": 0 },
+      "orange": { "hue": -15 },
+      "yellow": { "hue": -10 },
+      "green": { "hue": -10 },
+      "cyan": { "hue": -10 },
+      "blue": { "hue": -5 },
+      "purple": { "hue": 10 },
+      "pink": { "hue": 0 }
+    }
+  }
+}

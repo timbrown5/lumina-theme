@@ -1,0 +1,29 @@
+{
+  "name": "Twilight v2",
+  "variant": "balanced",
+  "definition": {
+    "bgHue": 220,
+    "bgSat": 35,
+    "bgLight": 14,
+    "accentHue": 10,
+    "accentSat": 80,
+    "accentLight": 70,
+    "commentLight": 55,
+    "accentOffsets": {
+      "red": { "hue": -5 },
+      "orange": { "hue": -15 },
+      "yellow": { "hue": -10 },
+      "green": { "hue": -10 },
+      "cyan": { "hue": -10 },
+      "blue": { "hue": -5 },
+      "purple": { "hue": 10 },
+      "pink": { "hue": 0 }
+    },
+    "colorOverrides": {
+      "base0A": { "hue": 55, "saturation": 80, "lightness": 62 },
+      "base0B": { "hue": 145, "saturation": 80, "lightness": 62 },
+      "base0D": { "hue": 215, "saturation": 80, "lightness": 76 },
+      "base0E": { "hue": 280, "saturation": 80, "lightness": 76 }
+    }
+  }
+}

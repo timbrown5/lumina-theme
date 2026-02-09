@@ -1,0 +1,23 @@
+{
+  "name": "Sunset v3",
+  "variant": "muted",
+  "definition": {
+    "bgHue": 18,
+    "bgSat": 75,
+    "bgLight": 97,
+    "accentHue": 352,
+    "accentSat": 35,
+    "accentLight": 55,
+    "commentLight": 62,
+    "accentOffsets": {
+      "red": { "hue": 0 },
+      "orange": { "hue": 5 },
+      "yellow": { "hue": -5 },
+      "green": { "hue": -5 },
+      "cyan": { "hue": -5 },
+      "blue": { "hue": 5 },
+      "purple": { "hue": 15 },
+      "pink": { "hue": 10 }
+    }
+  }
+}

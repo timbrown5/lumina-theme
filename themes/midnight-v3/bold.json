@@ -1,0 +1,23 @@
+{
+  "name": "Midnight v3",
+  "variant": "bold",
+  "definition": {
+    "bgHue": 275,
+    "bgSat": 30,
+    "bgLight": 6,
+    "accentHue": 350,
+    "accentSat": 90,
+    "accentLight": 60,
+    "commentLight": 50,
+    "accentOffsets": {
+      "red": { "hue": 0 },
+      "orange": { "hue": -5 },
+      "yellow": { "hue": -10 },
+      "green": { "hue": -10 },
+      "cyan": { "hue": -10 },
+      "blue": { "hue": 0 },
+      "purple": { "hue": 0 },
+      "pink": { "hue": 0 }
+    }
+  }
+}

@@ -216,51 +216,31 @@ export const hslToRgb = (h: number, s: number, l: number): string => {
 };
 
 /**
- * Applies perceptual lightness adjustments using OKHSL color space.
+ * Pulls accent L* toward the neutral-gray baseline at the same HSL lightness.
+ * Yellow/green (high L*) get pulled down, purple/blue (low L*) get pulled up.
+ * Low-chroma colors (backgrounds, foreground) skip correction entirely.
  */
 const adjustColorPerceptually = (h: number, s: number, l: number): string => {
-  const basicColor = hslToRgb(h, s, l);
-
+  const basic = hslToRgb(h, s, l);
   try {
-    const labColor = lab(basicColor);
-    if (!labColor || typeof labColor.l !== 'number') {
-      return basicColor;
-    }
-
+    const labColor = lab(basic);
+    if (!labColor || typeof labColor.l !== 'number') return basic;
     const chroma = Math.sqrt((labColor.a || 0) ** 2 + (labColor.b || 0) ** 2);
-    const hueAngle = (Math.atan2(labColor.b || 0, labColor.a || 0) * 180) / Math.PI;
-    const normalizedHue = (hueAngle + 360) % 360;
-
-    let targetLightness = labColor.l;
-
-    if (chroma > 35) {
-      if (normalizedHue >= 70 && normalizedHue <= 130) {
-        if (targetLightness > 65) {
-          targetLightness = targetLightness * 0.94;
-        }
-      } else if (normalizedHue >= 130 && normalizedHue <= 180) {
-        if (targetLightness > 60) {
-          targetLightness = targetLightness * 0.88;
-        }
-      } else if (normalizedHue >= 180 && normalizedHue <= 220) {
-        if (targetLightness > 75) {
-          targetLightness = targetLightness * 0.95;
-        }
-      }
-    }
-
-    if (Math.abs(targetLightness - labColor.l) > 0.1) {
-      const adjustedLabColor = { ...labColor, l: targetLightness };
-      const result = formatHex(adjustedLabColor);
-      if (result && result !== '#000000' && result !== '#ffffff') {
-        return result;
-      }
-    }
-
-    return basicColor;
-  } catch (error) {
-    console.warn('Color adjustment failed, using basic color:', error);
-    return basicColor;
+    if (chroma < 35) return basic; // skip low-chroma colors
+    // Target L* = what an achromatic color at this lightness would be
+    const targetLab = lab(hslToRgb(0, 0, l));
+    if (!targetLab) return basic;
+    const delta = targetLab.l - labColor.l;
+    // Only correct when the L* gap is significant — small gaps are natural
+    // and correcting them causes muddiness (e.g. yellow at low accentLight)
+    if (Math.abs(delta) < 10) return basic;
+    const strength = 0.25;
+    const newL = labColor.l + delta * strength;
+    const result = formatHex({ ...labColor, l: newL });
+    if (result && result !== '#000000' && result !== '#ffffff') return result;
+    return basic;
+  } catch {
+    return basic;
   }
 };
 
@@ -349,19 +329,20 @@ export const generateColors = (params: ThemeParams, accentOffsets: AccentOffsets
 
   const fg06 = overrides?.base06;
   const base06Hue = (params.bgHue + (isLight ? -60 : 60) + 360) % 360;
+  const fgSat = Math.min(params.bgSat, 35);
   const base06 = fg06
     ? hslToRgb(fg06.hue, fg06.saturation, fg06.lightness)
     : isLight
-      ? hslToRgb(base06Hue, params.bgSat, 20)
-      : hslToRgb(base06Hue, params.bgSat, 80);
+      ? hslToRgb(base06Hue, fgSat, 20)
+      : hslToRgb(base06Hue, fgSat, 80);
 
   const fg07 = overrides?.base07;
   const base07Hue = (params.bgHue + (isLight ? 60 : -60) + 360) % 360;
   const base07 = fg07
     ? hslToRgb(fg07.hue, fg07.saturation, fg07.lightness)
     : isLight
-      ? hslToRgb(base07Hue, params.bgSat, 20)
-      : hslToRgb(base07Hue, params.bgSat, 80);
+      ? hslToRgb(base07Hue, fgSat, 20)
+      : hslToRgb(base07Hue, fgSat, 80);
 
   // Accent colors (08-0F) — check overrides per color
   const accentColorKeys: AccentColorKey[] = [

@@ -1,0 +1,29 @@
+{
+  "name": "Sunset v2",
+  "variant": "bold",
+  "definition": {
+    "bgHue": 15,
+    "bgSat": 50,
+    "bgLight": 97,
+    "accentHue": 352,
+    "accentSat": 80,
+    "accentLight": 38,
+    "commentLight": 50,
+    "accentOffsets": {
+      "red": { "hue": 0 },
+      "orange": { "hue": 5 },
+      "yellow": { "hue": -5 },
+      "green": { "hue": -5 },
+      "cyan": { "hue": -5 },
+      "blue": { "hue": 5 },
+      "purple": { "hue": 15 },
+      "pink": { "hue": 10 }
+    },
+    "colorOverrides": {
+      "base0A": { "hue": 42, "saturation": 85, "lightness": 30 },
+      "base0B": { "hue": 150, "saturation": 85, "lightness": 30 },
+      "base0D": { "hue": 215, "saturation": 80, "lightness": 42 },
+      "base0E": { "hue": 275, "saturation": 80, "lightness": 42 }
+    }
+  }
+}

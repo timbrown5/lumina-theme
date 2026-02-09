@@ -1,0 +1,29 @@
+{
+  "name": "Midnight v2",
+  "variant": "muted",
+  "definition": {
+    "bgHue": 275,
+    "bgSat": 22,
+    "bgLight": 7,
+    "accentHue": 350,
+    "accentSat": 60,
+    "accentLight": 72,
+    "commentLight": 50,
+    "accentOffsets": {
+      "red": { "hue": 0 },
+      "orange": { "hue": -5 },
+      "yellow": { "hue": -10 },
+      "green": { "hue": -10 },
+      "cyan": { "hue": -10 },
+      "blue": { "hue": 0 },
+      "purple": { "hue": 0 },
+      "pink": { "hue": 0 }
+    },
+    "colorOverrides": {
+      "base0A": { "hue": 50, "saturation": 60, "lightness": 65 },
+      "base0B": { "hue": 140, "saturation": 60, "lightness": 65 },
+      "base0D": { "hue": 210, "saturation": 60, "lightness": 78 },
+      "base0E": { "hue": 270, "saturation": 60, "lightness": 78 }
+    }
+  }
+}
